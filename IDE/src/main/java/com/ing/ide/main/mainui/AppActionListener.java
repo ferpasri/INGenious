@@ -9,6 +9,7 @@ import com.ing.ide.main.mainui.components.testdesign.testdata.ImportTestData;
 import com.ing.ide.main.settings.INGeniousSettings;
 import com.ing.ide.main.settings.DriverSettings;
 import com.ing.ide.main.settings.TMSettings;
+import com.ing.ide.main.testar.TESTARPanel;
 import com.ing.ide.main.googlerecordingjson.JsonParser;
 import com.ing.ide.main.playwrightrecording.PlaywrightRecordingParser;
 import com.ing.ide.main.ui.AboutUI;
@@ -51,6 +52,8 @@ public class AppActionListener implements ActionListener {
     
     public final PlaywrightRecordingParser playwrightRecordingParser;
 
+    private final TESTARPanel testarPanel;
+
     public AppActionListener(AppMainFrame sMainFrame) throws IOException {
         this.sMainFrame = sMainFrame;
         nProject = new NewProject(sMainFrame);
@@ -64,6 +67,7 @@ public class AppActionListener implements ActionListener {
         injectScript = new InjectScript();
         importTestData = new ImportTestData(sMainFrame);
         playwrightRecordingParser=new PlaywrightRecordingParser(sMainFrame);
+        testarPanel = new TESTARPanel(sMainFrame);
     }
 
     @Override
@@ -208,6 +212,11 @@ public class AppActionListener implements ActionListener {
                     }
                 } 
                  break; 
+
+            case "TESTAR Scriptless":
+            	testarPanel.openEditor();
+            	break;
+
             default:
                 System.out.println(ae.getActionCommand());
                 sMainFrame.getLoader().showIDontCare();

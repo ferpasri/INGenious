@@ -36,6 +36,7 @@ public class IconSettings {
     private final Icon recordStopIcon = new ImageIcon(getClass().getResource("/ui/resources/recorder/record_stop.png"));
     private final ImageIcon settingsGear = new ImageIcon(getClass().getResource("/ui/resources/settings.png"));
     private final ImageIcon mobileObjectGrabb = new ImageIcon(getClass().getResource("/ui/resources/appStore.png"));
+    private final ImageIcon testarIcon = new ImageIcon(getClass().getResource("/ui/resources/TESTAR/testar_logo.png"));
 
     private final ImageIcon helpIcon = new ImageIcon(getClass().getResource("/ui/resources/ask.png"));
 
@@ -150,6 +151,10 @@ public class IconSettings {
 
     public ImageIcon getMobileObjectGrabb() {
         return mobileObjectGrabb;
+    }
+
+    public ImageIcon getTESTARIcon() {
+    	return testarIcon;
     }
 
     public ImageIcon getHelpIcon() {

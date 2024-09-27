@@ -14,6 +14,9 @@ pom.xml.releaseBackup
 pom.xml.versionsBackup
 pom.xml.next
 
+#Binaries
+bin/
+
 # Release
 /Dist/release
 /Dist/release/**
@@ -25,6 +28,7 @@ nb-configuration.xml
 .settings/
 .classpath
 .idea/
+.project
 
 # System Files
 .DS_Store
