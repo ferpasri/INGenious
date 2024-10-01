@@ -4,11 +4,17 @@ import java.util.List;
 import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.ing.ide.main.testar.actions.TESTARAction;
+import com.ing.ide.main.testar.actions.TESTARActionClick;
+import com.ing.ide.main.testar.actions.TESTARActionFill;
+import com.ing.ide.main.testar.reporting.TESTARHtmlReport;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserType;
 import com.microsoft.playwright.ElementHandle;
@@ -32,10 +38,14 @@ public class TESTARtool {
 	}
 
 	public String generateSequence() {
+		// Initialize a TESTAR HTML report
+		TESTARHtmlReport htmlReport = new TESTARHtmlReport();
+
 		// Initialize Playwright and launch Chromium
 		Playwright playwright = Playwright.create();
 		Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
 		Page page = browser.newPage();
+		page.setDefaultTimeout(5000); // 5 seconds of timeout
 
 		try {
 			// Navigate to the webSUT URL
@@ -58,17 +68,21 @@ public class TESTARtool {
 
 			for(int i = 0; i < numberActions; i++) {
 
-				// Derive interactive elements
-				List<ElementHandle> interactiveElements = deriveInteractiveElements(page);
+				// Derive TESTAR available actions to interact with web elements
+				List<TESTARAction> actions = deriveActions(page);
 
-				// Control the web page by checking the state contains interactive elements
-				interactiveElements = controlWebPage(page, interactiveElements);
+				// Control the web page by checking the state contains available actions
+				actions = controlWebPage(page, actions);
 
-				// Select one interactive element
-				ElementHandle selectedElement = selectRandomElement(interactiveElements);
+				//Write available derived actions
+				htmlReport.addDerivedActions(actions);
 
-				// Execute the selected interactive element
-				executeAction(page, selectedElement);
+				// Select one of available actions
+				TESTARAction selectedAction = selectRandomAction(actions);
+				htmlReport.addSelectedAction(selectedAction);
+
+				// Execute the selected action
+				executeAction(page, selectedAction);
 
 				// Apply test oracles into the state
 				verdict = getVerdict(page);
@@ -117,9 +131,9 @@ public class TESTARtool {
 		return "OK";
 	}
 
-	private List<ElementHandle> deriveInteractiveElements(Page page) {
-		// Define the selectors for actionable elements
-		String[] selectors = {
+	private List<TESTARAction> deriveActions(Page page) {
+		// Define selectors for clickable elements
+		String[] clickableSelectors = {
 				"a",                // Links
 				"button",           // Buttons
 				"input",            // Input fields (text, checkbox, radio, etc.)
@@ -128,17 +142,25 @@ public class TESTARtool {
 				"[role='button']"   // Elements with a role attribute as buttons (often used in modern UIs)
 		};
 
-		// Combine all the selectors into a single CSS selector string
-		String allSelectors = String.join(", ", selectors);
+		// Define selectors for fillable elements
+		String[] fillableSelectors = {
+				"input[type='text']",      // Text input fields
+				"textarea",                // Text areas
+				"input[type='email']",     // Email input fields
+				"input[type='password']"   // Password input fields
+		};
 
-		// Find all actionable elements
-		List<ElementHandle> allInteractiveElements = page.querySelectorAll(allSelectors);
+		// List all clickable elements considering all clickable selectors into a single CSS selector string
+		List<ElementHandle> clickableElements = page.querySelectorAll(String.join(", ", clickableSelectors));
+
+		// List all fillable elements considering all fillable selectors into a single CSS selector string
+		List<ElementHandle> fillableElements = page.querySelectorAll(String.join(", ", fillableSelectors));
 
 		// Compile the filter pattern into a regex
 		Pattern pattern = Pattern.compile(filterPattern);
 
-		// Filter elements that do not match the filterPattern
-		List<ElementHandle> filteredInteractiveElements = allInteractiveElements.stream()
+		// Create click actions for non filtered clickable elements
+		List<TESTARAction> clickActions = clickableElements.stream()
 				.filter(element -> {
 					String elementContent;
 					try {
@@ -151,15 +173,37 @@ public class TESTARtool {
 					// Return true if the element does not match the filter pattern
 					return !pattern.matcher(elementContent).find();
 				})
+				// Create a TESTARActionClick for each non filtered clickable element
+				.map(element -> new TESTARActionClick(element))
 				.collect(Collectors.toList());
 
-		return filteredInteractiveElements; // Return the filtered list of elements
+		// Create fill actions for non filtered fillable elements
+		List<TESTARAction> fillActions = fillableElements.stream()
+				.filter(element -> {
+					String elementContent;
+					try {
+						// Get the content of the element
+						elementContent = element.textContent();
+					} catch (Exception e) {
+						return true; // Keep it in the list if we can't retrieve its text
+					}
+					return !pattern.matcher(elementContent).find();
+				})
+				// Create a TESTARActionFill for each non filtered fillable element
+				// The text to type is generated randomly
+				.map(element -> new TESTARActionFill(element, RandomStringUtils.randomAlphabetic(10)))
+				.collect(Collectors.toList());
+
+		// Return the combined list of actions
+		return Stream.concat(clickActions.stream(), fillActions.stream())
+				.collect(Collectors.toList());
 	}
 
-	private List<ElementHandle> controlWebPage(Page page, List<ElementHandle> interactiveElements){
-		// If the DOM state does not contain interactive elements
+	private List<TESTARAction> controlWebPage(Page page, List<TESTARAction> actions){
+		// If TESTAR was not able to derive any action,
+		// maybe because the DOM state does not contain interactive elements
 		// Or if TESTAR is not in the webSUT URL
-		if(interactiveElements.isEmpty() || !page.url().contains(webSUT)) {
+		if(actions.isEmpty() || !page.url().contains(webSUT)) {
 			// Navigate to the original webSUT URL
 			page.navigate(webSUT);
 			// Wait for the page to finish loading 
@@ -167,31 +211,24 @@ public class TESTARtool {
 			page.waitForLoadState(LoadState.DOMCONTENTLOADED);
 			page.waitForLoadState(LoadState.NETWORKIDLE);
 			page.waitForLoadState(LoadState.LOAD);
-			// And derive again the interactive elements
-			interactiveElements = deriveInteractiveElements(page);
+			// And derive again the available actions
+			actions = deriveActions(page);
 		}
-		return interactiveElements;
+		return actions;
 	}
 
-	private ElementHandle selectRandomElement(List<ElementHandle> interactiveElements) {
-		// Select a random element from the interactive list
-		return interactiveElements.get(new Random().nextInt(interactiveElements.size()));
+	private TESTARAction selectRandomAction(List<TESTARAction> actions) {
+		// Select a random action from the available actions
+		return actions.get(new Random().nextInt(actions.size()));
 	}
 
-	private boolean executeAction(Page page, ElementHandle selectedElement) {
+	private boolean executeAction(Page page, TESTARAction action) {
 		try {
-			// Click the selected element
-			selectedElement.click();
-
-			// After the action, wait for the page to finish loading 
-			page.waitForLoadState(LoadState.DOMCONTENTLOADED);
-			page.waitForLoadState(LoadState.NETWORKIDLE);
-			page.waitForLoadState(LoadState.LOAD);
+			action.run(page);
 		} catch(Exception e) {
 			logger.log(Level.ERROR, e.getMessage());
 			return false;
 		}
-
 		return true;
 	}
 

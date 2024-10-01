@@ -17,19 +17,18 @@ import javax.swing.SwingWorker;
 import com.ing.ide.main.mainui.AppMainFrame;
 import com.ing.ide.settings.IconSettings;
 
-public class TESTARPanel {
+public class TESTARExecutionPanel {
 
 	private final AppMainFrame sMainFrame;
 
-	public TESTARPanel(AppMainFrame sMainFrame) {
+	public TESTARExecutionPanel(AppMainFrame sMainFrame) {
 		this.sMainFrame = sMainFrame;
 	}
 
-	// TODO: Replace this with TESTAR dialog
 	public void openEditor() {
 		// Create a modal dialog
 		JDialog dialog = new JDialog(sMainFrame, "TESTAR Scriptless Testing", true);
-		dialog.setSize(400, 600);
+		dialog.setSize(800, 600);
 		dialog.setLayout(new BorderLayout());
 		dialog.add(new JLabel(IconSettings.getIconSettings().getTESTARIcon()), BorderLayout.NORTH);
 		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
