@@ -139,12 +139,16 @@ public class TESTARtool {
 	private List<TESTARAction> deriveActions(Page page) {
 		// Define selectors for clickable elements
 		String[] clickableSelectors = {
-				"a",                // Links
-				"button",           // Buttons
-				"input",            // Input fields (text, checkbox, radio, etc.)
-				"select",           // Dropdowns
-				"[onclick]",        // Elements with onclick attributes (custom clickable elements)
-				"[role='button']"   // Elements with a role attribute as buttons (often used in modern UIs)
+				"a",                       // Links
+				"button",                  // Buttons
+				"input[type='button']",    // Input button
+				"input[type='submit']",    // Input submit button
+				"input[type='reset']",     // Input reset button
+				"input[type='checkbox']",  // Checkbox inputs
+				"input[type='radio']",     // Radio button inputs
+				"select",                  // Dropdowns
+				"[onclick]",               // Elements with onclick attributes (custom clickable elements)
+				"[role='button']"          // Elements with a role attribute as buttons (often used in modern UIs)
 		};
 
 		// Define selectors for fillable elements
