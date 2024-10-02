@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.List;
 
@@ -28,10 +29,23 @@ public class TESTARHtmlReport {
 		String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
 		String reportName = "TESTAR_report_" + timeStamp + ".html";
 		try {
-			htmlFile = Utils.getAppRoot() + File.separator + reportName;
+			// Create a folder to store TESTAR results
+			String outputFolder = Utils.getAppRoot() + File.separator + "TESTAR_results";
+			if(!new File(outputFolder).exists())
+				new File(outputFolder).mkdir();
+
+			htmlFile = outputFolder + File.separator + reportName;
 		} catch (IOException e) {
+			// Log the exception when obtaining the app root folder
 			logger.log(Level.ERROR, e.getMessage());
-			htmlFile = System.getProperty("user.dir") + File.separator + reportName;
+
+			// Then use the user dir to create a folder to store TESTAR results
+			String outputFolder = System.getProperty("user.dir") + File.separator + "TESTAR_results";
+			if(!new File(outputFolder).exists())
+				new File(outputFolder).mkdir();
+
+			htmlFile = outputFolder + File.separator + reportName;
+
 			logger.log(Level.ERROR, "TESTARHtmlReport created into: " + htmlFile);
 		}
 		startFileReport();
@@ -45,6 +59,19 @@ public class TESTARHtmlReport {
 		content.add("<header><h1>TESTAR HTML result</h1></header>");
 		content.add("</head>");
 		content.add("<body>");
+		writeToFile();
+	}
+
+	public void addState(byte[] screenshot, String url) {
+		content.add("<h3>State</h3>");
+		content.add("<a href='" + url + "'>" + url + "</a>");
+
+		// Convert byte[] screenshot into a Base64 encoded string
+		String base64Image = Base64.getEncoder().encodeToString(screenshot);
+		// Create an HTML image tag with the Base64-encoded image
+		String imgTag = "<img src='data:image/png;base64," + base64Image + "' alt='Page Screenshot' />";
+		content.add(imgTag);
+
 		writeToFile();
 	}
 

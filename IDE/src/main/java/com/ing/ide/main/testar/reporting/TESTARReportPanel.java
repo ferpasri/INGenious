@@ -35,10 +35,10 @@ public class TESTARReportPanel {
 		this.sMainFrame = sMainFrame;
 
 		try {
-			reportsPath = Utils.getAppRoot() + File.separator;
+			reportsPath = Utils.getAppRoot() + File.separator + "TESTAR_results" + File.separator;
 		} catch (IOException e) {
 			logger.log(Level.ERROR, e.getMessage());
-			reportsPath = System.getProperty("user.dir") + File.separator;
+			reportsPath = System.getProperty("user.dir") + File.separator + "TESTAR_results" + File.separator;
 			logger.log(Level.ERROR, "TESTARReportPanel reading HTML reports from: " + reportsPath);
 		}
 	}

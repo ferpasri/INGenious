@@ -67,6 +67,8 @@ public class TESTARtool {
 			}
 
 			for(int i = 0; i < numberActions; i++) {
+				// Add an image of the state in the HTML report
+				htmlReport.addState(page.screenshot(), page.url());
 
 				// Derive TESTAR available actions to interact with web elements
 				List<TESTARAction> actions = deriveActions(page);
@@ -74,7 +76,7 @@ public class TESTARtool {
 				// Control the web page by checking the state contains available actions
 				actions = controlWebPage(page, actions);
 
-				//Write available derived actions
+				// Write available derived actions in the HTML report
 				htmlReport.addDerivedActions(actions);
 
 				// Select one of available actions
@@ -91,6 +93,9 @@ public class TESTARtool {
 					return verdict;
 				}
 			}
+
+			// Add an image of the final state in the HTML report
+			htmlReport.addState(page.screenshot(), page.url());
 
 		} catch(Exception e) {
 			logger.log(Level.ERROR, e.getMessage());
