@@ -1,6 +1,7 @@
 package com.ing.ide.main.testar;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -29,9 +30,11 @@ public class TESTARtool {
 	private final int numberActions;
 	private final String filterPattern;
 	private final String suspiciousPattern;
+	private final Map<String, String> triggerActionsMap;
 
-	public TESTARtool(String webSUT, int numberActions, String filterPattern, String suspiciousPattern) {
+	public TESTARtool(String webSUT, Map<String, String> triggerActionsMap, int numberActions, String filterPattern, String suspiciousPattern) {
 		this.webSUT = webSUT;
+		this.triggerActionsMap = triggerActionsMap;
 		this.numberActions = numberActions;
 		this.filterPattern = filterPattern;
 		this.suspiciousPattern = suspiciousPattern;
@@ -45,19 +48,22 @@ public class TESTARtool {
 		Playwright playwright = Playwright.create();
 		Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
 		Page page = browser.newPage();
-		page.setDefaultTimeout(5000); // 5 seconds of timeout
+		page.setDefaultTimeout(3000); // 3 seconds of timeout
 
 		try {
 			// Navigate to the webSUT URL
 			page.navigate(webSUT);
 
 			// Initial wait
-			page.waitForTimeout(3000);
+			page.waitForTimeout(2000);
 
 			// Wait for the page to finish loading 
 			page.waitForLoadState(LoadState.DOMCONTENTLOADED);
 			page.waitForLoadState(LoadState.NETWORKIDLE);
 			page.waitForLoadState(LoadState.LOAD);
+
+			// Trigger initial actions
+			triggerInitialActions(page, triggerActionsMap);
 
 			// Apply test oracles into the initial state
 			String verdict = getVerdict(page);
@@ -105,6 +111,36 @@ public class TESTARtool {
 		}
 
 		return "OK";
+	}
+
+	private boolean triggerInitialActions(Page page, Map<String, String> triggerActionsMap) {
+		try {
+			// Iterate over the selector-value pairs
+			for (Map.Entry<String, String> entry : triggerActionsMap.entrySet()) {
+				String selector = entry.getKey();
+				String value = entry.getValue();
+
+				// Wait for each field to appear
+				page.waitForSelector(selector);
+
+				// Then, click or fill if value exists
+				if(value.isEmpty()) page.click(selector);
+				else page.fill(selector, value);
+			}
+
+			// Static wait
+			page.waitForTimeout(300);
+
+			// Wait for the page to finish loading 
+			page.waitForLoadState(LoadState.DOMCONTENTLOADED);
+			page.waitForLoadState(LoadState.NETWORKIDLE);
+			page.waitForLoadState(LoadState.LOAD);
+
+			return true;
+		} catch (Exception e) {
+			logger.log(Level.ERROR, "Trigger Initial Actions failed: " + e.getMessage());
+			return false;
+		}
 	}
 
 	private String getVerdict(Page page) {
@@ -155,6 +191,7 @@ public class TESTARtool {
 		String[] fillableSelectors = {
 				"input[type='text']",      // Text input fields
 				"textarea",                // Text areas
+				"input[class='input']",    // Input fields
 				"input[type='email']",     // Email input fields
 				"input[type='password']"   // Password input fields
 		};
@@ -208,6 +245,7 @@ public class TESTARtool {
 				.collect(Collectors.toList());
 	}
 
+	//TODO: Derive a TESTARActionBack instead of navigate to the initial state
 	private List<TESTARAction> controlWebPage(Page page, List<TESTARAction> actions){
 		// If TESTAR was not able to derive any action,
 		// maybe because the DOM state does not contain interactive elements
@@ -216,7 +254,7 @@ public class TESTARtool {
 			// Navigate to the original webSUT URL
 			page.navigate(webSUT);
 			// Wait for the page to finish loading 
-			page.waitForTimeout(1000);
+			page.waitForTimeout(300);
 			page.waitForLoadState(LoadState.DOMCONTENTLOADED);
 			page.waitForLoadState(LoadState.NETWORKIDLE);
 			page.waitForLoadState(LoadState.LOAD);

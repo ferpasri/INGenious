@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -28,14 +30,14 @@ public class TESTARExecutionPanel {
 	public void openEditor() {
 		// Create a modal dialog
 		JDialog dialog = new JDialog(sMainFrame, "TESTAR Scriptless Testing", true);
-		dialog.setSize(800, 600);
+		dialog.setSize(500, 600);
 		dialog.setLayout(new BorderLayout());
 		dialog.add(new JLabel(IconSettings.getIconSettings().getTESTARIcon()), BorderLayout.NORTH);
 		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 
 		// Create a panel for the input components
 		JPanel inputPanel = new JPanel();
-		inputPanel.setLayout(new GridLayout(5, 2, 10, 10));
+		inputPanel.setLayout(new GridLayout(9, 2, 5, 5));
 
 		// Add label and text field for URL input
 		JLabel urlLabel = new JLabel("Enter URL:");
@@ -43,6 +45,34 @@ public class TESTARExecutionPanel {
 		urlTextField.setText("https://para.testar.org/");
 		inputPanel.add(urlLabel);
 		inputPanel.add(urlTextField);
+
+		// Add label and text field for selectors and values
+		JLabel selectorLabel = new JLabel("Action Selectors:");
+		JLabel valueLabel = new JLabel("Values:");
+		inputPanel.add(selectorLabel);
+		inputPanel.add(valueLabel);
+
+		JTextField selectorTextField1 = new JTextField(40);
+		selectorTextField1.setText("input[name='username']");
+		JTextField valueTextField1 = new JTextField(40);
+		valueTextField1.setText("john");
+
+		JTextField selectorTextField2 = new JTextField(40);
+		selectorTextField2.setText("input[name='password']");
+		JTextField valueTextField2 = new JTextField(40);
+		valueTextField2.setText("demo");
+
+		JTextField selectorTextField3 = new JTextField(40);
+		selectorTextField3.setText("input[type='submit'][value='Log In']");
+		JTextField valueTextField3 = new JTextField(40);
+		valueTextField3.setText("");
+
+		inputPanel.add(selectorTextField1);
+		inputPanel.add(valueTextField1);
+		inputPanel.add(selectorTextField2);
+		inputPanel.add(valueTextField2);
+		inputPanel.add(selectorTextField3);
+		inputPanel.add(valueTextField3);
 
 		// Add label and text field for number of actions
 		JLabel actionsLabel = new JLabel("Number of Actions:");
@@ -54,7 +84,7 @@ public class TESTARExecutionPanel {
 		// Add label and text field for the regex used for filtering actions
 		JLabel filterLabel = new JLabel("Regex filtering:");
 		JTextField filterTextField = new JTextField(40);
-		filterTextField.setText(".*([wW]sdl|[wW]adl|[xX]ml|[pP]arasoft).*");
+		filterTextField.setText(".*([wW]sdl|[wW]adl|[xX]ml|[pP]arasoft|logout).*");
 		inputPanel.add(filterLabel);
 		inputPanel.add(filterTextField);
 
@@ -83,11 +113,17 @@ public class TESTARExecutionPanel {
 		launchButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				String url = urlTextField.getText();
+
+				Map<String, String> triggerActionsMap = new LinkedHashMap<>();
+				triggerActionsMap.put(selectorTextField1.getText(), valueTextField1.getText());
+				triggerActionsMap.put(selectorTextField2.getText(), valueTextField2.getText());
+				triggerActionsMap.put(selectorTextField3.getText(), valueTextField3.getText());
+
 				int numberActions = (Integer) actionsSpinner.getValue();
 				String filterPattern = filterTextField.getText();
 				String suspiciousPattern = suspiciousTextField.getText();
 
-				TESTARtool testar = new TESTARtool(url, numberActions, filterPattern, suspiciousPattern);
+				TESTARtool testar = new TESTARtool(url, triggerActionsMap, numberActions, filterPattern, suspiciousPattern);
 
 				// Create a SwingWorker to execute the long-running task
 				SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
