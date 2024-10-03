@@ -64,12 +64,12 @@ public class TESTARHtmlReport {
 
 	public void addState(byte[] screenshot, String url) {
 		content.add("<h3>State</h3>");
-		content.add("<a href='" + url + "'>" + url + "</a>");
+		content.add("<p><a href='" + url + "'>" + url + "</a></p>");
 
 		// Convert byte[] screenshot into a Base64 encoded string
 		String base64Image = Base64.getEncoder().encodeToString(screenshot);
 		// Create an HTML image tag with the Base64-encoded image
-		String imgTag = "<img src='data:image/png;base64," + base64Image + "' alt='Page Screenshot' />";
+		String imgTag = "<p><img src='data:image/png;base64," + base64Image + "' alt='Page Screenshot' /></p>";
 		content.add(imgTag);
 
 		writeToFile();
@@ -77,9 +77,17 @@ public class TESTARHtmlReport {
 
 	public void addDerivedActions(List<TESTARAction> actions) {
 		content.add("<h3>Derived actions</h3>");
-		for(TESTARAction action : actions) {
+
+		// Include actions information into a collapsible element
+		content.add("<details>");
+		content.add("<summary>Show/Hide Actions List</summary>");
+
+		for (TESTARAction action : actions) {
 			content.add("<p>" + action.toString() + "</p>");
 		}
+
+		content.add("</details>");
+
 		writeToFile();
 	}
 
