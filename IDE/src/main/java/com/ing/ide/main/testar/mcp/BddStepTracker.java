@@ -34,13 +34,13 @@ public final class BddStepTracker {
 
         // If the step is not the latest and was already executed, the mapping is trying to be done with an old previous step
         if (!isLatestBddStep(bddStep) && hasExecutedBddStep(bddStep)) {
-            String message = String.format(
-                    "The provided BDD step '%s' is not the current or a new step. " +
-                    "This may create a mismatched BDD-action map. " + 
-                    "Please refine the BDD step or just continue with other appropiated BDD steps.",
-                    bddStep
-            );
-            return Feedback.issue(message);
+            // TFG HOTFIX: Hemos comentado esta restricción estricta de ordenamiento.
+            // Si el LLM tiene que interactuar con el formulario, salta a aceptar cookies, y vuelve
+            // no podemos bloquearle porque deja un paso a medias.
+            // String message = String.format(...);
+            // return Feedback.issue(message);
+            
+            // Permite al LLM continuar en el paso previo si necesita terminarlo (ej: rellenar la edad después de hacer click en "Alone").
         }
 
         return null;

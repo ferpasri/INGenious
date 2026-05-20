@@ -177,5 +177,480 @@
 			<a href="console.txt" target="_blank" class="footer-log" title="Console Log"></a>
 			<a href="#" class="footer-scroll"></a>
 		</div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             TESTAR-MCP · Panel de Métricas Experimentales (TFG 2025-2026)
+             Requiere mcp_metrics.js en la misma carpeta que este HTML.
+        ════════════════════════════════════════════════════════════════ -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+        <script src="mcp_metrics.js"></script>
+        <script>
+        // Estado global de filtros (accesible desde handlers inline, fuera del IIFE)
+        var _mcpFilter = { model:'__all__', story:'__all__', result:'__all__', hideErr:true };
+        function mcpApplyFilter() {
+            _mcpFilter.model   = document.getElementById('mcpFModel').value;
+            _mcpFilter.story   = document.getElementById('mcpFStory').value;
+            _mcpFilter.result  = document.getElementById('mcpFResult').value;
+            _mcpFilter.hideErr = document.getElementById('mcpHideErr').checked;
+            if (typeof _mcpRenderAll === 'function') _mcpRenderAll();
+        }
+        var _mcpRenderAll = null; // se asigna dentro del IIFE
+
+        (function() {
+            if (typeof mcpMetricsData === 'undefined' || !mcpMetricsData.models || !mcpMetricsData.models.length) return;
+
+            // ── Constantes ────────────────────────────────────────────────
+            var TARGET_N    = 10;   // repeticiones objetivo por celda experimental
+            var SR_OK       = 70;   // umbral de éxito aceptable (%)
+            var ALL_RUNS    = mcpMetricsData.runs   || [];
+            var ALL_MODELS  = mcpMetricsData.models || [];
+            var META        = mcpMetricsData.meta   || {};
+            var TIMELINE    = mcpMetricsData.latencyTimeline || [];
+
+            var C_OK   = 'rgba(92,184,92,0.85)';
+            var C_WARN = 'rgba(240,173,78,0.85)';
+            var C_FAIL = 'rgba(217,83,79,0.85)';
+            var C_BLUE = 'rgba(51,122,183,0.85)';
+            var C_GRAY = 'rgba(150,150,150,0.5)';
+
+            // ── Helpers ───────────────────────────────────────────────────
+            function isApiError(r) { return !r.success && r.totalSteps === 0; }
+            function isValidRun(r) { return !isApiError(r); }
+            function storyLabel(g) {
+                var gl = (g||'').toLowerCase();
+                if (gl.indexOf('ing.nl')>-1||gl.indexOf('mortgage')>-1) return 'Calculadora ING';
+                if (gl.indexOf('loan')>-1||gl.indexOf('prestamo')>-1||gl.indexOf('préstamo')>-1) return 'Solicitud préstamo';
+                return 'Login Parabank';
+            }
+            function fmt(n) { return typeof n==='number' ? n.toLocaleString('es-ES') : (n||'—'); }
+            function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+            // ── Agrupar runs válidos por modelo ───────────────────────────
+            function groupByModel(runs) {
+                var g = {};
+                runs.forEach(function(r) {
+                    if (!g[r.model]) g[r.model] = { ok:0, fail:0, apiErr:0, lat:[], hal:[], tok:[], steps:[] };
+                    if (isApiError(r))      g[r.model].apiErr++;
+                    else if (r.success)   { g[r.model].ok++;   addStats(g[r.model], r); }
+                    else                  { g[r.model].fail++;  addStats(g[r.model], r); }
+                });
+                return g;
+            }
+            function addStats(d, r) {
+                d.lat.push(r.avgLatencyMs||0);
+                d.hal.push(r.invalidActions||0);
+                d.tok.push(r.totalTokens||0);
+                d.steps.push(r.totalSteps||0);
+            }
+            function avg(arr) { return arr.length ? arr.reduce(function(a,b){return a+b;},0)/arr.length : 0; }
+            function sr(d) { var v=d.ok+d.fail; return v?Math.round(100*d.ok/v):0; }
+
+            // ── Inyectar CSS ──────────────────────────────────────────────
+            var css = document.createElement('style');
+            css.textContent = [
+              /* contenedor */
+              '.mcp-wrap{margin:30px 0 20px;font-family:inherit}',
+              '.mcp-hdr{background:#1a2e4a;color:#fff;padding:12px 18px;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}',
+              '.mcp-hdr-title{font-size:14px;font-weight:700;letter-spacing:.3px}',
+              '.mcp-hdr-sub{font-size:11px;color:#8fa8c8;margin-top:2px}',
+              '.mcp-hdr-badge{background:#2c5f9e;color:#c8daf5;font-size:11px;padding:3px 10px;border-radius:3px;font-weight:600}',
+              /* filtros */
+              '.mcp-filters{background:#f0f4fa;border:1px solid #d1d9e6;border-top:none;padding:10px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}',
+              '.mcp-filters label{font-size:12px;font-weight:600;color:#444}',
+              '.mcp-filters select{border:1px solid #ccc;border-radius:3px;padding:4px 8px;font-size:12px;color:#333;background:#fff;cursor:pointer}',
+              '.mcp-filters .mcp-cbx{display:flex;align-items:center;gap:5px;font-size:12px;color:#555}',
+              /* progress table */
+              '.mcp-prog-wrap{border:1px solid #d1d9e6;border-top:none;overflow-x:auto}',
+              '.mcp-prog-wrap table{width:100%;border-collapse:collapse;font-size:12px}',
+              '.mcp-prog-wrap thead th{background:#f1f4f9;color:#4a5568;font-weight:700;padding:8px 12px;text-align:left;border-bottom:1px solid #d1d9e6;text-transform:uppercase;letter-spacing:.04em;font-size:11px;white-space:nowrap}',
+              '.mcp-prog-wrap tbody td{padding:7px 12px;border-bottom:1px solid #edf0f7;color:#1a2332;white-space:nowrap}',
+              '.mcp-prog-wrap tbody tr:last-child td{border-bottom:none}',
+              '.mcp-prog-wrap tbody tr:hover td{background:#f8f9fc}',
+              /* progress bar */
+              '.mcp-pbar{background:#e2e8f0;border-radius:3px;height:10px;width:100px;display:inline-block;vertical-align:middle;position:relative;overflow:hidden}',
+              '.mcp-pbar-fill{height:100%;border-radius:3px;transition:width .3s}',
+              /* badges */
+              '.mcp-badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}',
+              '.mcp-b-ok{background:#c6f6d5;color:#22543d}',
+              '.mcp-b-warn{background:#fef3c7;color:#92400e}',
+              '.mcp-b-fail{background:#fed7d7;color:#742a2a}',
+              '.mcp-b-err{background:#e9d8fd;color:#44337a}',
+              '.mcp-b-saas{background:#bee3f8;color:#1a365d}',
+              '.mcp-b-local{background:#e9d8fd;color:#44337a}',
+              '.mcp-b-done{background:#c6f6d5;color:#22543d}',
+              '.mcp-b-pend{background:#fef3c7;color:#92400e}',
+              /* KPI cards */
+              '.mcp-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:14px 16px;background:#f8f9fc;border:1px solid #d1d9e6;border-top:none}',
+              '@media(max-width:800px){.mcp-kpi-row{grid-template-columns:repeat(2,1fr)}}',
+              '.mcp-kpi{background:#fff;border:1px solid #d1d9e6;border-radius:4px;padding:12px 14px;text-align:center}',
+              '.mcp-kpi-val{font-size:24px;font-weight:700;line-height:1}',
+              '.mcp-kpi-lbl{font-size:10px;color:#6b7a99;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:5px}',
+              '.mcp-kpi-sub{font-size:10px;color:#aaa;margin-top:3px}',
+              '.mcp-kv-ok{color:#276749}','.mcp-kv-bad{color:#9b2c2c}','.mcp-kv-inf{color:#2c5f9e}','.mcp-kv-wrn{color:#b7791f}',
+              /* section boxes */
+              '.mcp-box{background:#fff;border:1px solid #d1d9e6;border-top:none}',
+              '.mcp-box-hdr{background:#f8f9fc;padding:9px 16px;border-bottom:1px solid #d1d9e6;display:flex;align-items:baseline;gap:10px}',
+              '.mcp-box-hdr h3{font-size:12px;font-weight:700;color:#1a2332;margin:0;text-transform:uppercase;letter-spacing:.04em}',
+              '.mcp-box-hdr .mcp-rq{font-size:10px;color:#2c5f9e;font-weight:600;border:1px solid #2c5f9e;padding:1px 6px;border-radius:3px}',
+              '.mcp-box-hdr .mcp-desc{font-size:11px;color:#6b7a99;margin-left:auto}',
+              '.mcp-box-body{padding:16px}',
+              /* charts grid */
+              '.mcp-charts{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #d1d9e6;border-top:none}',
+              '@media(max-width:750px){.mcp-charts{grid-template-columns:1fr}}',
+              '.mcp-chart-cell{padding:16px;border-right:1px solid #edf0f7;border-bottom:1px solid #edf0f7}',
+              '.mcp-chart-cell:nth-child(2n){border-right:none}',
+              '.mcp-chart-cell:nth-last-child(-n+2){border-bottom:none}',
+              '.mcp-chart-cell h4{font-size:11px;font-weight:700;color:#4a5568;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em}',
+              '.mcp-chart-cell .mcp-rq{font-size:10px;color:#2c5f9e;font-weight:600;border:1px solid #2c5f9e;padding:1px 5px;border-radius:3px;margin-left:6px}',
+              '.mcp-chart-cell .mcp-hint{font-size:10px;color:#8a9ab5;margin-top:6px;line-height:1.4}',
+              /* timeline */
+              '.mcp-timeline-wrap{border:1px solid #d1d9e6;border-top:none}',
+              /* runs table */
+              '.mcp-runs-wrap{border:1px solid #d1d9e6;border-top:none;overflow-x:auto}',
+              '.mcp-runs-wrap table{width:100%;border-collapse:collapse;font-size:12px}',
+              '.mcp-runs-wrap thead th{background:#f1f4f9;color:#4a5568;font-weight:700;padding:8px 10px;text-align:left;border-bottom:1px solid #d1d9e6;text-transform:uppercase;letter-spacing:.04em;font-size:11px;white-space:nowrap}',
+              '.mcp-runs-wrap tbody td{padding:7px 10px;border-bottom:1px solid #edf0f7;color:#1a2332;vertical-align:middle}',
+              '.mcp-runs-wrap tbody tr:last-child td{border-bottom:none}',
+              '.mcp-runs-wrap tbody tr:hover td{background:#f8f9fc}',
+              '.mcp-runs-wrap .mcp-row-err td{background:#fdf4ff;color:#6b46c1}',
+              '.mcp-runs-wrap .mcp-row-ok td{background:#f0fff4}',
+              '.mcp-run-mini{display:inline-flex;align-items:flex-end;gap:1px;height:14px;vertical-align:middle}',
+              '.mcp-run-mini span{width:3px;background:#2c5f9e;border-radius:1px 1px 0 0;display:inline-block}',
+              '.mcp-footer{background:#f1f4f9;border:1px solid #d1d9e6;border-top:none;padding:8px 16px;font-size:10px;color:#8a9ab5;text-align:right}'
+            ].join('');
+            document.head.appendChild(css);
+
+            // ── Estado del filtro (usa objeto global para handlers inline) ──
+            var chartInstances = {};
+
+            function filteredRuns() {
+                var f = _mcpFilter;
+                return ALL_RUNS.filter(function(r) {
+                    if (f.hideErr  && isApiError(r))                         return false;
+                    if (f.model  !== '__all__' && r.model !== f.model)       return false;
+                    if (f.story  !== '__all__' && storyLabel(r.testGoal) !== f.story) return false;
+                    if (f.result === 'ok'   && !r.success)                   return false;
+                    if (f.result === 'fail' &&  r.success)                   return false;
+                    return true;
+                });
+            }
+
+            // ── Construir DOM principal ───────────────────────────────────
+            var wrap = document.createElement('div');
+            wrap.className = 'mcp-wrap';
+
+            // Header
+            var lastRun = ALL_RUNS.length ? ALL_RUNS[ALL_RUNS.length-1] : {};
+            var validTotal = ALL_RUNS.filter(isValidRun).length;
+            wrap.innerHTML =
+              '<div class="mcp-hdr">' +
+                '<div><div class="mcp-hdr-title">TESTAR-INGenious — Panel de Métricas Experimentales</div>' +
+                '<div class="mcp-hdr-sub">Validación empírica Multi-LLM · TFG Santiago Fuentes · UPV 2025-2026</div></div>' +
+                '<div class="mcp-hdr-badge" id="mcpRunBadge">'+ALL_RUNS.length+' runs acumulados</div>' +
+              '</div>';
+
+            // Filtros
+            var uniqueModels  = [];
+            var uniqueStories = [];
+            ALL_RUNS.forEach(function(r) {
+                if (uniqueModels.indexOf(r.model) < 0)             uniqueModels.push(r.model);
+                var s = storyLabel(r.testGoal);
+                if (uniqueStories.indexOf(s) < 0)                  uniqueStories.push(s);
+            });
+
+            var filtersDiv = document.createElement('div');
+            filtersDiv.className = 'mcp-filters';
+            filtersDiv.innerHTML =
+              '<label>Modelo:</label>' +
+              '<select id="mcpFModel" onchange="mcpApplyFilter()"><option value="__all__">Todos</option>' +
+                uniqueModels.map(function(m){return '<option value="'+esc(m)+'">'+esc(m)+'</option>';}).join('') +
+              '</select>' +
+              '<label>Historia:</label>' +
+              '<select id="mcpFStory" onchange="mcpApplyFilter()"><option value="__all__">Todas</option>' +
+                uniqueStories.map(function(s){return '<option value="'+esc(s)+'">'+esc(s)+'</option>';}).join('') +
+              '</select>' +
+              '<label>Resultado:</label>' +
+              '<select id="mcpFResult" onchange="mcpApplyFilter()"><option value="__all__">Todos</option><option value="ok">Éxito</option><option value="fail">Fallo</option></select>' +
+              '<label class="mcp-cbx"><input type="checkbox" id="mcpHideErr" checked onchange="mcpApplyFilter()"> Ocultar errores API (0 pasos)</label>';
+            wrap.appendChild(filtersDiv);
+
+            // ── Tabla de PROGRESO DEL EXPERIMENTO ────────────────────────
+            var progHdr = document.createElement('div');
+            progHdr.className = 'mcp-box-hdr';
+            progHdr.style.borderTop = '1px solid #d1d9e6';
+            progHdr.innerHTML = '<h3>Progreso del experimento</h3><span class="mcp-rq">N = '+TARGET_N+' por celda</span>' +
+              '<span class="mcp-desc">Objetivo: '+ALL_MODELS.length+' modelos × N='+TARGET_N+' = '+(ALL_MODELS.length*TARGET_N)+' runs válidos</span>';
+            wrap.appendChild(progHdr);
+
+            var progWrap = document.createElement('div');
+            progWrap.className = 'mcp-prog-wrap';
+            progWrap.id = 'mcpProgTable';
+            wrap.appendChild(progWrap);
+
+            // ── KPI row ───────────────────────────────────────────────────
+            var kpiRow = document.createElement('div');
+            kpiRow.className = 'mcp-kpi-row';
+            kpiRow.id = 'mcpKpiRow';
+            wrap.appendChild(kpiRow);
+
+            // ── Charts ────────────────────────────────────────────────────
+            var chartsGrid = document.createElement('div');
+            chartsGrid.className = 'mcp-charts';
+            chartsGrid.innerHTML = [
+              '<div class="mcp-chart-cell">'+
+                '<h4>Success Rate por modelo (%)<span class="mcp-rq">RQ1</span></h4>'+
+                '<canvas id="mcpC1" style="max-height:200px"></canvas>'+
+                '<div class="mcp-hint">Porcentaje de runs en que el agente completó todos los pasos BDD sin error. '+
+                'Verde = viable (&ge;'+SR_OK+'%), rojo = no viable para producción.</div></div>',
+              '<div class="mcp-chart-cell">'+
+                '<h4>Alucinaciones / acciones inválidas<span class="mcp-rq">RQ4</span></h4>'+
+                '<canvas id="mcpC2" style="max-height:200px"></canvas>'+
+                '<div class="mcp-hint">Media de intentos de interacción rechazados por BddMcpValidator por run. '+
+                'Un agente robusto debería tender a 0.</div></div>',
+              '<div class="mcp-chart-cell">'+
+                '<h4>Latencia media por acción (ms)<span class="mcp-rq">RQ2</span></h4>'+
+                '<canvas id="mcpC3" style="max-height:200px"></canvas>'+
+                '<div class="mcp-hint">Tiempo de inferencia del LLM por paso. '+
+                'Valores &gt; 10 000 ms pueden requerir ajuste de timeouts en CI/CD.</div></div>',
+              '<div class="mcp-chart-cell">'+
+                '<h4>Tokens consumidos por run<span class="mcp-rq">RQ3</span></h4>'+
+                '<canvas id="mcpC4" style="max-height:200px"></canvas>'+
+                '<div class="mcp-hint">Media de tokens (entrada + salida) por ejecución completa. '+
+                'Determina el coste económico directo de los modelos SaaS.</div></div>'
+            ].join('');
+            wrap.appendChild(chartsGrid);
+
+            // Timeline (full width)
+            var tlWrap = document.createElement('div');
+            tlWrap.className = 'mcp-timeline-wrap';
+            tlWrap.innerHTML =
+              '<div class="mcp-box-hdr" style="border-top:none">' +
+                '<h3>Latencia por paso — último run (ms)<span class="mcp-rq">RQ2</span></h3>' +
+                '<span class="mcp-desc" id="mcpTlLabel">'+esc(lastRun.model||'')+'</span></div>'+
+              '<div class="mcp-box-body"><canvas id="mcpC5" style="max-height:150px"></canvas></div>';
+            wrap.appendChild(tlWrap);
+
+            // ── Tabla de runs ─────────────────────────────────────────────
+            var runsHdr = document.createElement('div');
+            runsHdr.className = 'mcp-box-hdr';
+            runsHdr.innerHTML = '<h3>Registro completo de ejecuciones</h3>' +
+              '<span class="mcp-desc" id="mcpRunCount">'+validTotal+' runs válidos</span>';
+            wrap.appendChild(runsHdr);
+
+            var runsWrap = document.createElement('div');
+            runsWrap.className = 'mcp-runs-wrap';
+            runsWrap.id = 'mcpRunsTable';
+            wrap.appendChild(runsWrap);
+
+            // Footer
+            var footer = document.createElement('div');
+            footer.className = 'mcp-footer';
+            footer.innerHTML = 'TESTAR-INGenious Experimental Dashboard · TFG 2025-2026 · UPV · Datos: mcp_all_runs.json · Último run: '+esc(META.timestamp||'');
+            wrap.appendChild(footer);
+
+            document.body.appendChild(wrap);
+
+            // ── Render funciones ──────────────────────────────────────────
+
+            function renderProgress() {
+                var f = _mcpFilter;
+                var baseRuns = ALL_RUNS.filter(function(r) {
+                    if (f.model !== '__all__' && r.model !== f.model) return false;
+                    if (f.story !== '__all__' && storyLabel(r.testGoal) !== f.story) return false;
+                    return true;
+                });
+                var stats = groupByModel(baseRuns);
+                var rows = Object.keys(stats).map(function(name) {
+                    var d = stats[name];
+                    var valid = d.ok + d.fail;
+                    var pct   = Math.min(100, Math.round(valid/TARGET_N*100));
+                    var rate  = sr(d);
+                    var modelInfo = ALL_MODELS.filter(function(m){return m.name===name;})[0] || {};
+                    var tipo  = modelInfo.type || (name.indexOf('gpt')>-1||name.indexOf('gemini')>-1?'saas':'local');
+                    var statusBadge = valid >= TARGET_N
+                        ? '<span class="mcp-badge mcp-b-done">✓ Completo</span>'
+                        : '<span class="mcp-badge mcp-b-pend">'+valid+'/'+TARGET_N+' pendiente</span>';
+                    var srBadge = valid === 0 ? '<span class="mcp-badge mcp-b-err">Sin datos</span>'
+                        : rate >= SR_OK  ? '<span class="mcp-badge mcp-b-ok">'+rate+'%</span>'
+                        : rate >= 40     ? '<span class="mcp-badge mcp-b-warn">'+rate+'%</span>'
+                        :                  '<span class="mcp-badge mcp-b-fail">'+rate+'%</span>';
+                    var barColor = pct>=100?'#5cb85c':pct>=50?'#f0ad4e':'#d9534f';
+                    return '<tr>'+
+                        '<td><strong>'+esc(name)+'</strong></td>'+
+                        '<td><span class="mcp-badge '+(tipo==='saas'?'mcp-b-saas':'mcp-b-local')+'">'+tipo.toUpperCase()+'</span></td>'+
+                        '<td>'+valid+'</td>'+
+                        '<td style="color:#d9534f">'+(d.apiErr||0)+'</td>'+
+                        '<td>'+d.ok+'</td>'+
+                        '<td>'+srBadge+'</td>'+
+                        '<td>'+statusBadge+'</td>'+
+                        '<td>'+
+                          '<div class="mcp-pbar"><div class="mcp-pbar-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'+
+                          ' <small style="color:#666">'+pct+'%</small>'+
+                        '</td>'+
+                    '</tr>';
+                });
+                document.getElementById('mcpProgTable').innerHTML =
+                  '<table><thead><tr>'+
+                    '<th>Modelo</th><th>Tipo</th><th>Runs válidos</th><th>Errores API</th>'+
+                    '<th>Éxitos</th><th>Success Rate</th><th>Estado</th><th>Progreso (N='+TARGET_N+')</th>'+
+                  '</tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+            }
+
+            function renderKpis(runs) {
+                var valid = runs.filter(isValidRun);
+                if (!valid.length) { document.getElementById('mcpKpiRow').innerHTML='<div style="padding:12px;color:#888;font-size:12px">Sin datos para los filtros seleccionados.</div>'; return; }
+                var ok    = valid.filter(function(r){return r.success;});
+                var stats = groupByModel(valid);
+                var names = Object.keys(stats);
+                var best  = names.reduce(function(a,b){return sr(stats[b])>sr(stats[a])?b:a;}, names[0]);
+                var worst = names.reduce(function(a,b){return sr(stats[b])<sr(stats[a])?b:a;}, names[0]);
+                var avgLat = avg(valid.map(function(r){return r.avgLatencyMs||0;}));
+                var avgHal = avg(valid.map(function(r){return r.invalidActions||0;}));
+                var lastV  = valid[valid.length-1];
+                var kpis = [
+                    {v: sr(stats[best])+'%',       l:'Mejor success rate',        s:best,                   c:'mcp-kv-ok'},
+                    {v: sr(stats[worst])+'%',      l:'Peor success rate',          s:worst,                  c:'mcp-kv-bad'},
+                    {v: Math.round(avgLat).toLocaleString('es-ES')+' ms', l:'Latencia media (runs válidos)', s:'ms/acción', c:'mcp-kv-inf'},
+                    {v: avgHal.toFixed(1),          l:'Alucinaciones medias',       s:'por run',              c:'mcp-kv-wrn'},
+                    {v: valid.length+'/'+ALL_RUNS.length, l:'Runs válidos / totales', s:ALL_RUNS.filter(isApiError).length+' errores API descartados', c:'mcp-kv-inf'}
+                ];
+                document.getElementById('mcpKpiRow').innerHTML = kpis.map(function(k){
+                    return '<div class="mcp-kpi">'+
+                        '<div class="mcp-kpi-val '+k.c+'">'+k.v+'</div>'+
+                        '<div class="mcp-kpi-lbl">'+k.l+'</div>'+
+                        '<div class="mcp-kpi-sub">'+k.s+'</div></div>';
+                }).join('');
+            }
+
+            function renderCharts(runs) {
+                var valid  = runs.filter(isValidRun);
+                var stats  = groupByModel(valid);
+                var names  = Object.keys(stats);
+                if (!names.length) return;
+
+                var srData   = names.map(function(n){return sr(stats[n]);});
+                var halData  = names.map(function(n){return Math.round(avg(stats[n].hal)*10)/10;});
+                var latData  = names.map(function(n){return Math.round(avg(stats[n].lat));});
+                var tokData  = names.map(function(n){return Math.round(avg(stats[n].tok));});
+
+                var srColors  = srData.map(function(v){return v>=SR_OK?C_OK:v>=40?C_WARN:C_FAIL;});
+                var halColors = halData.map(function(v){return v===0?C_OK:v<1?C_WARN:C_FAIL;});
+
+                function mkBar(id, labels, data, colors, fmt, yLbl) {
+                    if (chartInstances[id]) chartInstances[id].destroy();
+                    var el = document.getElementById(id);
+                    if (!el) return;
+                    chartInstances[id] = new Chart(el, { type:'bar', data:{
+                        labels: labels,
+                        datasets:[{ data:data, backgroundColor:colors, borderRadius:3 }]
+                    }, options:{
+                        responsive:true, maintainAspectRatio:false,
+                        plugins:{ legend:{display:false},
+                            tooltip:{ callbacks:{ label:function(c){ return fmt ? fmt(c.parsed.y) : c.parsed.y; }}}},
+                        scales:{ x:{ticks:{font:{size:10},color:'#666'}},
+                                 y:{beginAtZero:true,ticks:{font:{size:10},color:'#666'},
+                                    title:{display:!!yLbl,text:yLbl||'',font:{size:10},color:'#888'}}}
+                    }});
+                }
+
+                mkBar('mcpC1', names, srData,  srColors,  function(v){return v+'%';}, '%');
+                mkBar('mcpC2', names, halData, halColors, null, 'media/run');
+                mkBar('mcpC3', names, latData, latData.map(function(){return C_BLUE;}), function(v){return v.toLocaleString('es-ES')+' ms';}, 'ms');
+                mkBar('mcpC4', names, tokData, tokData.map(function(){return C_WARN;}),  function(v){return v.toLocaleString('es-ES')+' tok';}, 'tokens');
+            }
+
+            function renderTimeline(tl, model) {
+                document.getElementById('mcpTlLabel').textContent = model || '';
+                if (chartInstances['mcpC5']) chartInstances['mcpC5'].destroy();
+                var el = document.getElementById('mcpC5');
+                if (!el || !tl || !tl.length) return;
+                chartInstances['mcpC5'] = new Chart(el, { type:'line', data:{
+                    labels: tl.map(function(_,i){return 'Paso '+(i+1);}),
+                    datasets:[{ data:tl, borderColor:C_BLUE, backgroundColor:'rgba(44,95,158,0.08)',
+                        fill:true, tension:0.35, pointRadius:3, borderWidth:1.5 }]
+                }, options:{
+                    responsive:true, maintainAspectRatio:false,
+                    plugins:{ legend:{display:false},
+                        tooltip:{ callbacks:{ label:function(c){ return c.parsed.y.toLocaleString('es-ES')+' ms'; }}}},
+                    scales:{ x:{ticks:{font:{size:10},color:'#666'}},
+                             y:{beginAtZero:true, ticks:{font:{size:10},color:'#666'}, title:{display:true,text:'ms',font:{size:10},color:'#888'}}}
+                }});
+            }
+
+            function renderRunsTable(runs) {
+                // runs ya viene filtrado desde renderAll() vía filteredRuns()
+                // Solo añadimos los errores API si el usuario quiere verlos
+                var validRuns = _mcpFilter.hideErr
+                    ? runs.filter(function(r){ return !isApiError(r); })
+                    : runs;
+
+                document.getElementById('mcpRunCount').textContent = validRuns.length + ' runs mostrados';
+
+                if (!validRuns.length) {
+                    document.getElementById('mcpRunsTable').innerHTML = '<div style="padding:20px;text-align:center;color:#888;font-size:12px">Sin runs para los filtros seleccionados.</div>';
+                    return;
+                }
+
+                var rows = validRuns.map(function(r) {
+                    var errApi = isApiError(r);
+                    var rowCls = errApi ? 'mcp-row-err' : r.success ? 'mcp-row-ok' : '';
+                    var resBadge = errApi
+                        ? '<span class="mcp-badge mcp-b-err">Error API</span>'
+                        : r.success
+                            ? '<span class="mcp-badge mcp-b-ok">PASS</span>'
+                            : '<span class="mcp-badge mcp-b-fail">FAIL</span>';
+                    var modelInfo = ALL_MODELS.filter(function(m){return m.name===r.model;})[0]||{};
+                    var tipo = modelInfo.type || (r.model.indexOf('gpt')>-1||r.model.indexOf('gemini')>-1?'saas':'local');
+                    var tipoBadge = '<span class="mcp-badge '+(tipo==='saas'?'mcp-b-saas':'mcp-b-local')+'">'+tipo.toUpperCase()+'</span>';
+                    var tl = r.latencyTimeline || [];
+                    var maxLat = Math.max.apply(null, tl.concat([1]));
+                    var mini = tl.length ? '<div class="mcp-run-mini">'+
+                        tl.map(function(v){var h=Math.max(2,Math.round(v/maxLat*14));return '<span style="height:'+h+'px"></span>';}).join('')+
+                        '</div>' : '—';
+                    var halColor = (r.invalidActions||0)>0 ? '#9b2c2c' : '#276749';
+                    return '<tr class="'+rowCls+'">'+
+                        '<td style="font-family:monospace;font-size:11px;color:#666">'+esc(r.runId||'')+'</td>'+
+                        '<td style="font-size:10px;color:#888;font-family:monospace">'+esc(r.timestamp||'')+'</td>'+
+                        '<td><strong>'+esc(r.model||'')+'</strong></td>'+
+                        '<td>'+tipoBadge+'</td>'+
+                        '<td><span style="font-size:10px;background:#e8ecf5;color:#2d3a5a;padding:2px 6px;border-radius:3px">'+esc(storyLabel(r.testGoal))+'</span></td>'+
+                        '<td>'+resBadge+'</td>'+
+                        '<td style="text-align:right">'+(r.totalSteps||'0')+'</td>'+
+                        '<td style="text-align:right;color:'+halColor+';font-weight:700">'+(r.invalidActions||0)+'</td>'+
+                        '<td style="text-align:right;font-family:monospace;font-size:11px">'+
+                            (r.avgLatencyMs ? fmt(r.avgLatencyMs)+' ms' : '—')+'</td>'+
+                        '<td style="text-align:right;font-family:monospace;font-size:11px">'+
+                            (r.totalTokens  ? fmt(r.totalTokens)        : '—')+'</td>'+
+                        '<td>'+mini+'</td>'+
+                    '</tr>';
+                }).join('');
+
+                document.getElementById('mcpRunsTable').innerHTML =
+                  '<table><thead><tr>'+
+                    '<th>Run ID</th><th>Timestamp</th><th>Modelo</th><th>Tipo</th>'+
+                    '<th>Historia</th><th>Resultado</th><th>Pasos</th>'+
+                    '<th>Alucinaciones</th><th>Latencia media</th><th>Tokens</th><th>Perfil latencia</th>'+
+                  '</tr></thead><tbody>'+rows+'</tbody></table>';
+            }
+
+            // ── Render completo ───────────────────────────────────────────
+            function renderAll() {
+                var runs = filteredRuns();
+                renderProgress();
+                renderKpis(runs);
+                renderCharts(runs);
+                renderRunsTable(runs);
+            }
+
+            // Exponer al scope global para que mcpApplyFilter() lo pueda llamar
+            _mcpRenderAll = renderAll;
+
+            // ── Render inicial ────────────────────────────────────────────
+            renderProgress();
+            renderAll();
+            renderTimeline(TIMELINE, lastRun.model ? esc(lastRun.model) + ' · ' + storyLabel(lastRun.testGoal||'') : '');
+
+        })();
+        </script>
     </body>
 </html>

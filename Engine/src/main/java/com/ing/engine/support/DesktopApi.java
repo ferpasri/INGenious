@@ -64,8 +64,14 @@ public class DesktopApi {
         }
 
         if (os.isWindows()) {
-            if (runCommand("explorer", "%s", what)) {
+            // Use Desktop.browse(URI) — correctly handles paths with spaces and special chars.
+            // 'explorer' opens Windows Explorer; 'cmd /c start' breaks on paths with spaces.
+            try {
+                java.net.URI fileUri = new java.io.File(what).toURI();
+                Desktop.getDesktop().browse(fileUri);
                 return true;
+            } catch (Exception e) {
+                logErr("Desktop.browse failed, falling back: " + e.getMessage());
             }
         }
 

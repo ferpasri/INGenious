@@ -86,7 +86,11 @@ public class TESTARDataWriter {
         if (trimmed.isEmpty()) {
             return "";
         }
-        return trimmed.replaceAll("[\\\\/?:*\"|><]", "_");
+        String sanitized = trimmed.replaceAll("[\\\\/?:*\"|><\r\n]", "_");
+        if (sanitized.length() > 50) {
+            sanitized = sanitized.substring(0, 50).trim() + "_" + Math.abs(value.hashCode());
+        }
+        return sanitized;
     }
 
     private Scenario setResuableStepScenario() {
@@ -252,7 +256,10 @@ public class TESTARDataWriter {
             String input,
             String reference
     ) {
-        String bddStepParsed = bddStep.replaceAll("[\\\\/?:*\"|><]", "_");
+        String bddStepParsed = bddStep.replaceAll("[\\\\/?:*\"|><\r\n]", "_");
+        if (bddStepParsed.length() > 50) {
+            bddStepParsed = bddStepParsed.substring(0, 50).trim() + "_" + Math.abs(bddStep.hashCode());
+        }
         String bddAction = this.reusableStepScenario.getName() + ":".concat(bddStepParsed);
 
         // First, create the abstract test step in the main test case of the test plan

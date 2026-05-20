@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TESTAR-INGenious · Panel de Resultados Experimentales</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    background: #f4f5f7;
+    color: #1a2332;
+    line-height: 1.5;
+  }
+
+  /* Header */
+  .header {
+    background: #1a2e4a;
+    color: #fff;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid #2c5f9e;
+  }
+  .header-title { font-size: 15px; font-weight: 600; letter-spacing: 0.02em; }
+  .header-sub { font-size: 12px; color: #8fa8c8; margin-top: 2px; }
+  .header-badge {
+    background: #2c5f9e;
+    color: #c8daf5;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  /* Layout */
+  .main { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
+
+  /* File loader */
+  .loader-bar {
+    background: #fff;
+    border: 1px solid #d1d9e6;
+    border-radius: 6px;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: #4a5568;
+  }
+  .loader-bar label { font-weight: 500; color: #1a2332; white-space: nowrap; }
+  .loader-bar input[type="file"] { flex: 1; font-size: 12px; }
+  .loader-bar .hint { color: #8a9ab5; font-size: 11px; white-space: nowrap; }
+
+  /* Stat cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: #fff;
+    border: 1px solid #d1d9e6;
+    border-radius: 6px;
+    padding: 14px 16px;
+    border-top: 3px solid #2c5f9e;
+  }
+  .stat-card.success { border-top-color: #276749; }
+  .stat-card.warning { border-top-color: #b7791f; }
+  .stat-card.danger  { border-top-color: #9b2c2c; }
+  .stat-card.neutral { border-top-color: #4a5568; }
+  .stat-label { font-size: 11px; color: #6b7a99; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+  .stat-value { font-size: 26px; font-weight: 700; color: #1a2332; margin-top: 4px; line-height: 1; }
+  .stat-desc  { font-size: 11px; color: #8a9ab5; margin-top: 4px; }
+
+  /* Section */
+  .section {
+    background: #fff;
+    border: 1px solid #d1d9e6;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .section-header {
+    padding: 12px 20px;
+    background: #f8f9fc;
+    border-bottom: 1px solid #d1d9e6;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-title { font-size: 13px; font-weight: 600; color: #1a2332; }
+  .section-meta  { font-size: 11px; color: #8a9ab5; }
+  .section-body  { padding: 20px; }
+
+  /* Charts grid */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    background: #f1f4f9;
+    color: #4a5568;
+    font-weight: 600;
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid #d1d9e6;
+    white-space: nowrap;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid #edf0f7; color: #1a2332; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #f8f9fc; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .badge-ok  { background: #c6f6d5; color: #22543d; }
+  .badge-err { background: #fed7d7; color: #742a2a; }
+  .badge-saas  { background: #bee3f8; color: #1a365d; }
+  .badge-local { background: #e9d8fd; color: #44337a; }
+
+  .tag-story {
+    font-size: 10px;
+    background: #e8ecf5;
+    color: #2d3a5a;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 500;
+  }
+
+  .filters { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .filters select {
+    border: 1px solid #d1d9e6;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: #1a2332;
+    background: #fff;
+    cursor: pointer;
+  }
+  .filters label { font-size: 12px; color: #6b7a99; font-weight: 500; }
+
+  .mono { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; }
+
+  .no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: #8a9ab5;
+    font-size: 13px;
+  }
+
+  .latency-mini {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 16px;
+  }
+  .latency-mini span {
+    width: 3px;
+    background: #2c5f9e;
+    border-radius: 1px 1px 0 0;
+    display: inline-block;
+  }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 11px; color: #4a5568; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: #8a9ab5;
+    padding: 16px 0 24px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">TESTAR-INGenious — Panel de Resultados Experimentales</div>
+    <div class="header-sub">Validación empírica de arquitectura Multi-LLM · TFG Santiago Fuentes · UPV 2025–2026</div>
+  </div>
+  <div class="header-badge" id="run-count">0 runs cargados</div>
+</div>
+
+<div class="main">
+
+  <div class="loader-bar">
+    <label>Cargar datos:</label>
+    <input type="file" id="file-input" accept=".json">
+    <span class="hint">mcp_all_runs.json</span>
+    <button onclick="loadDemo()" style="background:#1a2e4a;color:#fff;border:none;padding:5px 12px;border-radius:4px;font-size:12px;cursor:pointer;">Cargar demo</button>
+  </div>
+
+  <!-- KPI row -->
+  <div class="stats-grid">
+    <div class="stat-card success">
+      <div class="stat-label">Best success rate</div>
+      <div class="stat-value" id="kpi-sr">—</div>
+      <div class="stat-desc" id="kpi-sr-model">—</div>
+    </div>
+    <div class="stat-card danger">
+      <div class="stat-label">Alucinaciones · último run</div>
+      <div class="stat-value" id="kpi-hal">—</div>
+      <div class="stat-desc">acciones inválidas</div>
+    </div>
+    <div class="stat-card warning">
+      <div class="stat-label">Latencia media · último run</div>
+      <div class="stat-value" id="kpi-lat">—</div>
+      <div class="stat-desc">ms por acción</div>
+    </div>
+    <div class="stat-card neutral">
+      <div class="stat-label">Tokens · último run</div>
+      <div class="stat-value" id="kpi-tok">—</div>
+      <div class="stat-desc">total input+output</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Runs acumulados</div>
+      <div class="stat-value" id="kpi-runs">0</div>
+      <div class="stat-desc">experimentos</div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div class="charts-grid">
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Success rate por modelo (%) — RQ1</div>
+        <div class="section-meta">% ejecuciones completadas</div>
+      </div>
+      <div class="section-body">
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chart-sr" role="img" aria-label="Tasa de éxito por modelo LLM">Sin datos</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Alucinaciones / acciones inválidas — RQ4</div>
+        <div class="section-meta">media por run</div>
+      </div>
+      <div class="section-body">
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chart-hal" role="img" aria-label="Acciones inválidas por modelo">Sin datos</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Latencia media por acción (ms) — RQ2</div>
+        <div class="section-meta">ms · inferencia LLM</div>
+      </div>
+      <div class="section-body">
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chart-lat" role="img" aria-label="Latencia media por modelo">Sin datos</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Tokens consumidos por run — RQ3</div>
+        <div class="section-meta">media input+output</div>
+      </div>
+      <div class="section-body">
+        <div class="chart-wrap" style="height:220px;">
+          <canvas id="chart-tok" role="img" aria-label="Tokens por modelo">Sin datos</canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Latency timeline -->
+  <div class="section" style="margin-bottom:16px;">
+    <div class="section-header">
+      <div class="section-title">Latencia por paso — último run (ms)</div>
+      <div class="section-meta" id="timeline-label">—</div>
+    </div>
+    <div class="section-body">
+      <div class="chart-wrap" style="height:160px;">
+        <canvas id="chart-timeline" role="img" aria-label="Latencia por paso del último run">Sin datos</canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run table -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">Registro de ejecuciones</div>
+      <div class="filters">
+        <label>Modelo:</label>
+        <select id="filter-model" onchange="renderTable()"><option value="">Todos</option></select>
+        <label>Historia:</label>
+        <select id="filter-story" onchange="renderTable()"><option value="">Todas</option></select>
+        <label>Resultado:</label>
+        <select id="filter-result" onchange="renderTable()">
+          <option value="">Todos</option>
+          <option value="true">Éxito</option>
+          <option value="false">Fallo</option>
+        </select>
+      </div>
+    </div>
+    <div id="table-container">
+      <div class="no-data">Carga el fichero mcp_all_runs.json para visualizar los datos.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    TESTAR-INGenious Experimental Dashboard · TFG 2025-2026 · UPV · Datos: mcp_all_runs.json
+  </div>
+</div>
+
+<script>
+let allRuns = [];
+let charts = {};
+
+const MODELS_LOCAL = ['ministral-3:8b','qwen3:8b','llama3.2','qwen2.5:7b','qwen2.5','llama','mistral','ministral'];
+const isLocal = m => MODELS_LOCAL.some(l => m.toLowerCase().includes(l));
+
+function storyName(testGoal) {
+  const g = (testGoal || '').toLowerCase();
+  if (g.includes('ing.nl') || g.includes('mortgage') || g.includes('hipotec')) return 'Calculadora hipoteca';
+  if (g.includes('loan') || g.includes('préstamo') || g.includes('prestamo')) return 'Solicitud préstamo';
+  return 'Login';
+}
+
+const MODEL_COLORS = [
+  '#2c5f9e','#276749','#b7791f','#9b2c2c','#553c9a','#285e61','#744210','#4a5568'
+];
+
+function getModelColor(models, model) {
+  const idx = models.indexOf(model);
+  return MODEL_COLORS[idx % MODEL_COLORS.length];
+}
+
+function loadDemo() {
+  allRuns = [
+    {runId:'run-1',timestamp:'20/04/2026 20:12:47',model:'gpt-5-mini',testGoal:"Given the user navigates to the url 'https://para.testar.org/'",success:true,totalSteps:7,invalidActions:0,totalTokens:20818,avgLatencyMs:12137,latencyTimeline:[5172,45632,7260,6351,4752,11137,4657]},
+    {runId:'run-2',timestamp:'20/04/2026 20:15:10',model:'gpt-5-mini',testGoal:"Given the user navigates to the url 'https://para.testar.org/'",success:true,totalSteps:7,invalidActions:0,totalTokens:20956,avgLatencyMs:11980,latencyTimeline:[4900,42000,7100,6200,4800,10900,4500]},
+    {runId:'run-3',timestamp:'20/04/2026 20:20:00',model:'qwen2.5:7b',testGoal:"Given the user navigates to the url 'https://para.testar.org/'",success:true,totalSteps:7,invalidActions:0,totalTokens:22356,avgLatencyMs:2100,latencyTimeline:[900,800,750,1200,1000,950,850]},
+    {runId:'run-4',timestamp:'20/04/2026 20:25:00',model:'qwen2.5:7b',testGoal:"Given the user navigates to the url 'https://para.testar.org/' When the user logs in And the user navigates to request a loan",success:false,totalSteps:17,invalidActions:3,totalTokens:53539,avgLatencyMs:2400,latencyTimeline:[900,100,900,100,900,3200,900,3200,2800,3100,4400,3000,4800,6300,4200,3600,900]}
+  ];
+  process();
+}
+
+// Auto-load mcp_all_runs.json if it exists alongside this file
+(function tryAutoLoad() {
+  fetch('mcp_all_runs.json')
+    .then(r => { if (!r.ok) throw new Error('no file'); return r.json(); })
+    .then(data => {
+      allRuns = Array.isArray(data) ? data : [data];
+      process();
+    })
+    .catch(() => { /* file not found — wait for user to load manually */ });
+})();
+
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      allRuns = Array.isArray(data) ? data : [data];
+      process();
+    } catch(err) {
+      alert('Error leyendo JSON: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+});
+
+function process() {
+  if (!allRuns.length) return;
+
+  document.getElementById('kpi-runs').textContent = allRuns.length;
+  document.getElementById('run-count').textContent = allRuns.length + ' run' + (allRuns.length !== 1 ? 's' : '') + ' cargados';
+
+  const last = allRuns[allRuns.length - 1];
+  document.getElementById('kpi-hal').textContent = last.invalidActions ?? '—';
+  document.getElementById('kpi-lat').textContent = last.avgLatencyMs ? last.avgLatencyMs.toLocaleString() : '—';
+  document.getElementById('kpi-tok').textContent = last.totalTokens ? last.totalTokens.toLocaleString() : '—';
+
+  const models = [...new Set(allRuns.map(r => r.model))];
+  const srByModel = {};
+  models.forEach(m => {
+    const runs = allRuns.filter(r => r.model === m);
+    srByModel[m] = Math.round((runs.filter(r => r.success).length / runs.length) * 100);
+  });
+  const bestModel = models.reduce((a,b) => srByModel[a] >= srByModel[b] ? a : b, models[0]);
+  document.getElementById('kpi-sr').textContent = srByModel[bestModel] + '%';
+  document.getElementById('kpi-sr-model').textContent = bestModel;
+
+  updateFilters(models);
+  renderCharts(models, srByModel);
+  renderTimeline(last);
+  renderTable();
+}
+
+function updateFilters(models) {
+  const mSel = document.getElementById('filter-model');
+  const sSel = document.getElementById('filter-story');
+  const stories = [...new Set(allRuns.map(r => storyName(r.testGoal)))];
+  mSel.innerHTML = '<option value="">Todos</option>' + models.map(m => `<option>${m}</option>`).join('');
+  sSel.innerHTML = '<option value="">Todas</option>' + stories.map(s => `<option>${s}</option>`).join('');
+}
+
+function renderCharts(models, srByModel) {
+  const colors = models.map((m,i) => MODEL_COLORS[i % MODEL_COLORS.length]);
+
+  const halByModel = {};
+  const latByModel = {};
+  const tokByModel = {};
+  models.forEach(m => {
+    const runs = allRuns.filter(r => r.model === m);
+    halByModel[m] = +(runs.reduce((a,r) => a + (r.invalidActions||0), 0) / runs.length).toFixed(2);
+    latByModel[m] = Math.round(runs.reduce((a,r) => a + (r.avgLatencyMs||0), 0) / runs.length);
+    tokByModel[m] = Math.round(runs.reduce((a,r) => a + (r.totalTokens||0), 0) / runs.length);
+  });
+
+  const opts = (yLabel, fmt) => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: ctx => fmt ? fmt(ctx.parsed.y) : ctx.parsed.y }
+      }
+    },
+    scales: {
+      x: { ticks: { font: { size: 10 }, color: '#4a5568' }, grid: { color: '#edf0f7' } },
+      y: { ticks: { font: { size: 10 }, color: '#4a5568' }, grid: { color: '#edf0f7' }, title: { display: true, text: yLabel, font: { size: 10 }, color: '#6b7a99' } }
+    }
+  });
+
+  function makeChart(id, data, label, yLabel, fmt) {
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(document.getElementById(id), {
+      type: 'bar',
+      data: {
+        labels: models,
+        datasets: [{ label, data, backgroundColor: colors, borderColor: colors, borderWidth: 0, borderRadius: 3 }]
+      },
+      options: opts(yLabel, fmt)
+    });
+  }
+
+  makeChart('chart-sr',  models.map(m => srByModel[m]),  'Success Rate (%)', '%', v => v + '%');
+  makeChart('chart-hal', models.map(m => halByModel[m]), 'Alucinaciones',    'media/run');
+  makeChart('chart-lat', models.map(m => latByModel[m]), 'Latencia (ms)',    'ms', v => v.toLocaleString() + ' ms');
+  makeChart('chart-tok', models.map(m => tokByModel[m]), 'Tokens',           'tokens', v => v.toLocaleString());
+}
+
+function renderTimeline(run) {
+  const tl = run.latencyTimeline || [];
+  document.getElementById('timeline-label').textContent =
+    run.model + ' · ' + storyName(run.testGoal) + ' · ' + run.runId;
+
+  if (charts['chart-timeline']) charts['chart-timeline'].destroy();
+  charts['chart-timeline'] = new Chart(document.getElementById('chart-timeline'), {
+    type: 'line',
+    data: {
+      labels: tl.map((_,i) => 'Paso ' + (i+1)),
+      datasets: [{
+        label: 'Latencia (ms)',
+        data: tl,
+        borderColor: '#2c5f9e',
+        backgroundColor: 'rgba(44,95,158,0.08)',
+        borderWidth: 1.5,
+        pointRadius: 3,
+        pointBackgroundColor: '#2c5f9e',
+        tension: 0.35,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString() + ' ms' } }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 }, color: '#4a5568' }, grid: { color: '#edf0f7' } },
+        y: { ticks: { font: { size: 10 }, color: '#4a5568' }, grid: { color: '#edf0f7' }, title: { display: true, text: 'ms', font: { size: 10 }, color: '#6b7a99' } }
+      }
+    }
+  });
+}
+
+function renderTable() {
+  const fm = document.getElementById('filter-model').value;
+  const fs = document.getElementById('filter-story').value;
+  const fr = document.getElementById('filter-result').value;
+
+  let runs = allRuns.filter(r => {
+    if (fm && r.model !== fm) return false;
+    if (fs && storyName(r.testGoal) !== fs) return false;
+    if (fr !== '' && String(r.success) !== fr) return false;
+    return true;
+  });
+
+  if (!runs.length) {
+    document.getElementById('table-container').innerHTML = '<div class="no-data">Sin resultados para los filtros seleccionados.</div>';
+    return;
+  }
+
+  let html = `<table>
+    <thead>
+      <tr>
+        <th>Run ID</th>
+        <th>Timestamp</th>
+        <th>Modelo</th>
+        <th>Tipo</th>
+        <th>Historia</th>
+        <th>Resultado</th>
+        <th>Pasos</th>
+        <th>Alucinaciones</th>
+        <th>Latencia media</th>
+        <th>Tokens</th>
+        <th>Perfil latencia</th>
+      </tr>
+    </thead>
+    <tbody>`;
+
+  runs.forEach(r => {
+    const story = storyName(r.testGoal);
+    const tipo = isLocal(r.model)
+      ? '<span class="badge badge-local">Local</span>'
+      : '<span class="badge badge-saas">SaaS</span>';
+    const res = r.success
+      ? '<span class="badge badge-ok">Éxito</span>'
+      : '<span class="badge badge-err">Fallo</span>';
+
+    const tl = r.latencyTimeline || [];
+    const maxLat = Math.max(...tl, 1);
+    const miniSpans = tl.map(v => {
+      const h = Math.max(3, Math.round((v / maxLat) * 16));
+      return `<span style="height:${h}px;"></span>`;
+    }).join('');
+    const mini = tl.length ? `<div class="latency-mini">${miniSpans}</div>` : '—';
+
+    html += `<tr>
+      <td class="mono">${r.runId || '—'}</td>
+      <td class="mono" style="font-size:10px;color:#6b7a99;">${r.timestamp || '—'}</td>
+      <td style="font-weight:500;">${r.model || '—'}</td>
+      <td>${tipo}</td>
+      <td><span class="tag-story">${story}</span></td>
+      <td>${res}</td>
+      <td style="text-align:right;">${r.totalSteps ?? '—'}</td>
+      <td style="text-align:right;color:${(r.invalidActions||0)>0?'#9b2c2c':'#276749'};font-weight:600;">${r.invalidActions ?? '—'}</td>
+      <td style="text-align:right;" class="mono">${r.avgLatencyMs ? r.avgLatencyMs.toLocaleString() + ' ms' : '—'}</td>
+      <td style="text-align:right;" class="mono">${r.totalTokens ? r.totalTokens.toLocaleString() : '—'}</td>
+      <td>${mini}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('table-container').innerHTML = html;
+}
+</script>
+</body>
+</html>

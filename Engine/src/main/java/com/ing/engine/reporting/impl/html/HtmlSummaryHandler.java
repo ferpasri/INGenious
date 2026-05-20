@@ -205,6 +205,11 @@ public class HtmlSummaryHandler extends SummaryHandler implements PrimaryHandler
             FileUtils.copyFileToDirectory(new File(FilePath.getVideoReportHTMLPath()),
                     new File(FilePath.getCurrentResultsPath()));
         }
+        // mcp_metrics.js escrito por LlmMcpAgent — lo copiamos al results para que summary.html lo cargue
+        File sourceMetricsJs = new File("mcp_metrics.js");
+        if (sourceMetricsJs.exists()) {
+            FileUtils.copyFileToDirectory(sourceMetricsJs, new File(FilePath.getCurrentResultsPath()));
+        }
     }
 
     private void createStandaloneHtmls() throws IOException {
@@ -225,6 +230,11 @@ public class HtmlSummaryHandler extends SummaryHandler implements PrimaryHandler
             perfHtml = perfHtml.replaceAll("../../../../media", "media");
             FileUtils.writeStringToFile(new File(FilePath.getCurrentPerfReportHTMLPath()), perfHtml, Charset.defaultCharset());
 
+        }
+        // mcp_metrics.js escrito por LlmMcpAgent — lo copiamos al results para que summary.html lo cargue
+        File sourceMetricsJs = new File("mcp_metrics.js");
+        if (sourceMetricsJs.exists()) {
+            FileUtils.copyFileToDirectory(sourceMetricsJs, new File(FilePath.getCurrentResultsPath()));
         }
     }
 
@@ -273,6 +283,7 @@ public class HtmlSummaryHandler extends SummaryHandler implements PrimaryHandler
     public synchronized void launchResultSummary() {
         if (!isExtentEnabled()) {
             if (SystemDefaults.canLaunchSummary()) {
+                // Solo abrimos summary.html — las métricas están embebidas dentro
                 DesktopApi.open(new File(FilePath.getCurrentSummaryHTMLPath()));
             }
         }
