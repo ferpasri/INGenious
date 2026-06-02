@@ -5,16 +5,17 @@ import java.io.File;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Utility {
 
-    static final SimpleDateFormat DATA_FORMAT = new SimpleDateFormat("MM/dd/yyyy"),
-            TIME_FORMAT = new SimpleDateFormat("hh:mm:ss a"),
-            DATE_FILE_FORMAT = new SimpleDateFormat("MM-dd-yyyy"),
-            TIME_FILE_FORMAT = new SimpleDateFormat("hh-mm-ss a"),
-            LIC_DATE_FORMAT = new SimpleDateFormat("ddMMyyyy");
+    static final SimpleDateFormat DATA_FORMAT = new SimpleDateFormat("MM/dd/yyyy", Locale.ENGLISH),
+            TIME_FORMAT = new SimpleDateFormat("hh:mm:ss a", Locale.ENGLISH),
+            DATE_FILE_FORMAT = new SimpleDateFormat("MM-dd-yyyy", Locale.ENGLISH),
+            TIME_FILE_FORMAT = new SimpleDateFormat("hh-mm-ss a", Locale.ENGLISH),
+            LIC_DATE_FORMAT = new SimpleDateFormat("ddMMyyyy", Locale.ENGLISH);
 
     static Path path;
     static File file;
