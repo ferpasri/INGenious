@@ -24,6 +24,13 @@ import java.util.Stack;
 
 import com.ing.engine.drivers.WebDriverCreation;
 import com.ing.engine.drivers.MobileObject;
+import com.ing.ingenious.api.contract.CommandPluginApi;
+import com.ing.ingenious.api.contract.data.UserDataAccessApi;
+import com.ing.ingenious.api.contract.drivers.AutomationObjectApi;
+import com.ing.ingenious.api.contract.drivers.MobileObjectApi;
+import com.ing.ingenious.api.contract.drivers.PlaywrightDriverCreationApi;
+import com.ing.ingenious.api.contract.reports.TestCaseReportApi;
+import com.ing.engine.drivers.StructuredDataObject;
 import java.io.File;
 import java.util.List;
 import java.util.Properties;
@@ -34,24 +41,27 @@ import javax.jms.JMSProducer;
 import javax.jms.TextMessage;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import com.jacob.activeX.ActiveXComponent;
+import com.jacob.com.Dispatch;
+import com.ing.engine.drivers.SAPObject;
 
-/** Kafka Imports
-import org.apache.kafka.common.header.Header;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-*/
+/** Kafka Imports */
+// import org.apache.kafka.common.header.Header;
+// import org.apache.avro.Schema;
+// import org.apache.avro.generic.GenericRecord;
+// import org.apache.kafka.clients.consumer.ConsumerRecord;
+// import org.apache.kafka.clients.consumer.KafkaConsumer;
+// import org.apache.kafka.clients.producer.KafkaProducer;
+// import org.apache.kafka.clients.producer.ProducerRecord;
 
-public class Command {
+public class Command implements CommandPluginApi {
 
     public Page Page;
     public Playwright Playwright;
     public BrowserContext BrowserContext;
     public AutomationObject AObject;
     public MobileObject MObject;
+    public StructuredDataObject SObject;
     public PlaywrightDriverCreation Driver;
     public String Data;
     public String ObjectName;
@@ -68,6 +78,12 @@ public class Command {
     public WebDriver mDriver;
     public WebElement Element;
     public MobileObject mObject;
+    
+    //For SAP Testing
+    public ActiveXComponent SAPsession;
+    public SAPObject SAPObject;
+    public Dispatch SAPElement;
+    public Process SAPProcess;
 
     /**
      * ******API*******
@@ -89,6 +105,9 @@ public class Command {
     static public Map<String, Instant> before = new HashMap<>();
     static public Map<String, Instant> after = new HashMap<>();
     static public Map<String, Long> duration = new HashMap<>();
+    static public HashMap<String, String> headerMap = new HashMap<>();
+    static public Map<String, HashMap<String,String>> headerKeyValueMap = new HashMap<>();
+    
     public String key;
     static public String basicAuthorization;
     /**
@@ -143,46 +162,44 @@ public class Command {
     /**
      * *** Kafka Parameters ****
      */
-    
-    /** Kafka Parameters
-    static public Map<String, List<Header>> kafkaHeaders = new HashMap<>();
-    static public Map<String, String> kafkaProducerTopic = new HashMap<>();
-    static public Map<String, String> kafkaConsumerTopic = new HashMap<>();
-    static public Map<String, String> kafkaConsumerGroupId = new HashMap<>();
-    static public Map<String, String> kafkaServers = new HashMap<>();
-    static public Map<String, String> kafkaSchemaRegistryURL = new HashMap<>();
-    static public Map<String, Integer> kafkaPartition = new HashMap<>();
-    static public Map<String, Long> kafkaTimeStamp = new HashMap<>();
-    static public Map<String, String> kafkaKey = new HashMap<>();
-    static public Map<String, String> kafkaKeySerializer = new HashMap<>();
-    static public Map<String, String> kafkaKeyDeserializer = new HashMap<>();
-    static public Map<String, Object> kafkaValue = new HashMap<>();
-    static public Map<String, String> kafkaValueSerializer = new HashMap<>();
-    static public Map<String, String> kafkaValueDeserializer = new HashMap<>();
-    static public Map<String, Integer> kafkaConsumerPollRetries = new HashMap<>();
-    static public Map<String, Long> kafkaConsumerPollDuration = new HashMap<>();   
-    static public Map<String, Schema> kafkaAvroSchema =new HashMap<>();
-    static public Map<String, ProducerRecord<String, GenericRecord>> kafkaGenericRecord =new HashMap<>();
-    static public Map<String, GenericRecord> kafkaGenericRecordValue =new HashMap<>();
-    static public Map<String, KafkaProducer<String, GenericRecord>> kafkaAvroProducer =new HashMap<>();
-    static public Map<String, ArrayList<String>> kafkaConfigs = new HashMap<>();
-    static public Map<String, Properties> kafkaProducersslConfigs = new HashMap<>();
-    static public Map<String, Properties> kafkaConsumersslConfigs = new HashMap<>();
-    static public Map<String, String> kafkaAvroCompatibleMessage = new HashMap<>();
-    static public Map<String, String> kafkaConsumeRecordCount = new HashMap<>();
-    static public Map<String, String> kafkaConsumeRecordValue = new HashMap<>();
-    static public Map<String, String> kafkaSharedSecret = new HashMap<>();
-    static public Map<String, List<ConsumerRecord<String, Object>>> kafkaConsumerRecords = new HashMap<>();
-    static public Map<String, ConsumerRecord<String, Object>> kafkaConsumerPollRecord = new HashMap<>();
-    static public Map<String, String> kafkaRecordIdentifierValue = new HashMap<>();
-    static public Map<String, String> kafkaRecordIdentifierPath = new HashMap<>();
-    static public Map<String, Integer> kafkaConsumerMaxPollRecords = new HashMap<>();
-    static public Map<String, Boolean> kafkaAutoRegisterSchemas = new HashMap<>();
-    static public Map<String, ProducerRecord> kafkaProducerRecord = new HashMap<>();
-    static public Map<String, ConsumerRecord> kafkaConsumerRecord = new HashMap<>();
-    static public Map<String, KafkaProducer> kafkaProducer = new HashMap<>();
-    static public Map<String, KafkaConsumer> kafkaConsumer = new HashMap<>();       
-    */
+    // static public Map<String, List<Header>> kafkaHeaders = new HashMap<>();
+    // static public Map<String, String> kafkaProducerTopic = new HashMap<>();
+    // static public Map<String, String> kafkaConsumerTopic = new HashMap<>();
+    // static public Map<String, String> kafkaConsumerGroupId = new HashMap<>();
+    // static public Map<String, String> kafkaServers = new HashMap<>();
+    // static public Map<String, String> kafkaSchemaRegistryURL = new HashMap<>();
+    // static public Map<String, Integer> kafkaPartition = new HashMap<>();
+    // static public Map<String, Long> kafkaTimeStamp = new HashMap<>();
+    // static public Map<String, String> kafkaKey = new HashMap<>();
+    // static public Map<String, String> kafkaKeySerializer = new HashMap<>();
+    // static public Map<String, String> kafkaKeyDeserializer = new HashMap<>();
+    // static public Map<String, Object> kafkaValue = new HashMap<>();
+    // static public Map<String, String> kafkaValueSerializer = new HashMap<>();
+    // static public Map<String, String> kafkaValueDeserializer = new HashMap<>();
+    // static public Map<String, Integer> kafkaConsumerPollRetries = new HashMap<>();
+    // static public Map<String, Long> kafkaConsumerPollDuration = new HashMap<>();   
+    // static public Map<String, Schema> kafkaAvroSchema =new HashMap<>();
+    // static public Map<String, ProducerRecord<String, GenericRecord>> kafkaGenericRecord =new HashMap<>();
+    // static public Map<String, GenericRecord> kafkaGenericRecordValue =new HashMap<>();
+    // static public Map<String, KafkaProducer<String, GenericRecord>> kafkaAvroProducer =new HashMap<>();
+    // static public Map<String, ArrayList<String>> kafkaConfigs = new HashMap<>();
+    // static public Map<String, Properties> kafkaProducersslConfigs = new HashMap<>();
+    // static public Map<String, Properties> kafkaConsumersslConfigs = new HashMap<>();
+    // static public Map<String, String> kafkaAvroCompatibleMessage = new HashMap<>();
+    // static public Map<String, String> kafkaConsumeRecordCount = new HashMap<>();
+    // static public Map<String, String> kafkaConsumeRecordValue = new HashMap<>();
+    // static public Map<String, String> kafkaSharedSecret = new HashMap<>();
+    // static public Map<String, List<ConsumerRecord<String, Object>>> kafkaConsumerRecords = new HashMap<>();
+    // static public Map<String, ConsumerRecord<String, Object>> kafkaConsumerPollRecord = new HashMap<>();
+    // static public Map<String, String> kafkaRecordIdentifierValue = new HashMap<>();
+    // static public Map<String, String> kafkaRecordIdentifierPath = new HashMap<>();
+    // static public Map<String, Integer> kafkaConsumerMaxPollRecords = new HashMap<>();
+    // static public Map<String, Boolean> kafkaAutoRegisterSchemas = new HashMap<>();
+    // static public Map<String, ProducerRecord> kafkaProducerRecord = new HashMap<>();
+    // static public Map<String, ConsumerRecord> kafkaConsumerRecord = new HashMap<>();
+    // static public Map<String, KafkaProducer> kafkaProducer = new HashMap<>();
+    // static public Map<String, KafkaConsumer> kafkaConsumer = new HashMap<>();
+    // static public Map<String, List<HashMap<String, String>>> kafkaRecordIdentifier = new HashMap<>();
 
     public Command(CommandControl cc) {
         Commander = cc;
@@ -200,11 +217,27 @@ public class Command {
             Reference = Commander.Reference;
             Action = Commander.Action;
             userData = Commander.userData;
+        } else if (Commander.SAPsession != null) {
+            SAPsession = Commander.SAPsession.session;
+            SAPProcess = Commander.SAPsession.SAPProcess;
+            SAPObject = Commander.SAPObject;
+            Data = Commander.Data;
+            ObjectName = Commander.ObjectName;
+            SAPElement = Commander.SAPElement;
+            imageObjectGroup = Commander.imageObjectGroup;
+            Description = Commander.Description;
+            Condition = Commander.Condition;
+            Input = Commander.Input;
+            Report = Commander.Report;
+            Reference = Commander.Reference;
+            Action = Commander.Action;
+            userData = Commander.userData;
         } else {
             Page = Commander.Page.page;
             Playwright = Commander.Playwright.playwright;
             BrowserContext = Commander.BrowserContext.browserContext;
             AObject = Commander.AObject;
+            SObject = Commander.SObject;
             Driver = Commander.Page;
             Data = Commander.Data;
             ObjectName = Commander.ObjectName;
@@ -362,6 +395,100 @@ public class Command {
     }
 
     /**
+     * Checks if a runtime or user-defined variable exists.
+     * 
+     * <p>This method delegates to CommandControl's isVarExist method to verify whether
+     * a variable is defined. See {@link CommandControl#isVarExist(String)} for details.</p>
+     * 
+     * @param key the variable key to check, with or without percent signs (e.g., "%varName%" or "varName")
+     * @return true if the variable exists and has a non-null value, false otherwise
+     */
+    public boolean isVarExist(String key) {
+        return Commander.isVarExist(key);
+    }
+
+    /**
      * ******************************
      */
+    
+    /**
+     * Implementation of {@link CommandPluginApi#getReport()} for the API-plugin contract.
+     * @return the TestCaseReportApi instance for logging test results
+     */
+    @Override
+    public TestCaseReportApi getReport() {
+        return (TestCaseReportApi) Report;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getData()} for the API-plugin contract.
+     * @return the data input parameter
+     */
+    @Override
+    public String getData() {
+        return Data;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getObjectName()} for the API-plugin contract.
+     * @return the object name
+     */
+    @Override
+    public String getObjectName() {
+        return ObjectName;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getDescription()} for the API-plugin contract.
+     * @return the action description
+     */
+    @Override
+    public String getDescription() {
+        return Description;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getCondition()} for the API-plugin contract.
+     * @return the condition parameter
+     */
+    @Override
+    public String getCondition() {
+        return Condition;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getInput()} for the API-plugin contract.
+     * @return the input parameter
+     */
+    @Override
+    public String getInput() {
+        return Input;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getAction()} for the API-plugin contract.
+     * @return the action name
+     */
+    @Override
+    public String getAction() {
+        return Action;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getReference()} for the API-plugin contract.
+     * @return the reference parameter
+     */
+    @Override
+    public String getReference() {
+        return Reference;
+    }
+
+    /**
+     * Implementation of {@link CommandPluginApi#getUserData()} for the API-plugin contract.
+     * @return the UserDataAccessApi instance for test data access
+     */
+    @Override
+    public UserDataAccessApi getUserData() {
+        return userData;
+    }
 }

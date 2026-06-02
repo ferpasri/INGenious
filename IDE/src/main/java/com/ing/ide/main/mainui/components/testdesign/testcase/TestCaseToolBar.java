@@ -6,6 +6,7 @@ import com.ing.ide.main.utils.SearchBox;
 import com.ing.ide.main.utils.Utils;
 import com.ing.ide.settings.IconSettings;
 import java.awt.event.ItemEvent;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import javax.swing.AbstractButton;
@@ -38,11 +39,14 @@ public class TestCaseToolBar extends JToolBar {
     private JPopupMenu browsersMenu;
 
     private ButtonGroup browserSelectButtonGroup;
+    
+    private boolean isRecording = false;
 
     public TestCaseToolBar(TestCaseComponent testCaseComp) {
         this.testCaseComp = testCaseComp;
         setFloatable(false);
-        setBorder(javax.swing.BorderFactory.createEtchedBorder());
+        setOpaque(false);
+        setBorder(javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 0, UIManager.getColor("Separator.foreground")));
         setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS));
         init();
     }
@@ -65,10 +69,14 @@ public class TestCaseToolBar extends JToolBar {
         addSeparator();
 
         add(consoleButton = Utils.createButton("Console", "console", null, testCaseComp));
-        add(record = Utils.createButton("Record", testCaseComp));
+
+        record = Utils.createButton("Record", testCaseComp);
         record.setText(null);
-        record.setToolTipText("Start/Stop Recording");
+        record.setToolTipText("Start Recording");
         record.setIcon(IconSettings.getIconSettings().getRecordStartIcon());
+
+        record.addActionListener(e -> toggleRecording());
+        add(record);
 
         add(runButton = Utils.createButton("Run", "run", "F6", testCaseComp));
         add(debugButton = Utils.createButton("Debug", "debug", "Ctrl+F6", testCaseComp));
@@ -107,12 +115,26 @@ public class TestCaseToolBar extends JToolBar {
 
     void loadBrowsers(List<String> emulators) {
         browsersMenu.removeAll();
+        
+        // Add Playwright browsers first
         List<String> browsers = PlaywrightDriverFactory.Browser.getValuesAsList();
         setBrowserListPopupMenu(browsers);
-        if (!emulators.isEmpty()) {
+        
+        // Extract SAP and add it with separator
+        List<String> emulatorsCopy = new ArrayList<>(emulators);
+        boolean hasSAP = emulatorsCopy.remove("SAP");
+        
+        if (hasSAP) {
             browsersMenu.addSeparator();
-            setBrowserListPopupMenu(emulators);
+            setBrowserListPopupMenu(List.of("SAP"));
         }
+        
+        // Add remaining emulators
+        if (!emulatorsCopy.isEmpty()) {
+            browsersMenu.addSeparator();
+            setBrowserListPopupMenu(emulatorsCopy);
+        }
+        
         selectABrowser();
     }
 
@@ -186,4 +208,14 @@ public class TestCaseToolBar extends JToolBar {
         runButton.setActionCommand("StopRun");
         runButton.setIcon(Utils.getIconByResourceName("/ui/resources/stop"));
     }
+    
+    void toggleRecording() {
+        record.setEnabled(false);
+    }
+    
+    public void enableRecordButton() {
+        record.setEnabled(true);
+        record.setToolTipText("Start Recording");
+    }
+
 }

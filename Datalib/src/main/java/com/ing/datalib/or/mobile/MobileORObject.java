@@ -22,6 +22,12 @@ import javax.swing.event.TableModelListener;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 
+/**
+ * Represents a single mobile object inside a MobileOR page, containing a collection of
+ * OR attributes, frame information, and references to its parent object group.
+ * Supports attribute editing, table model operations, cloning, renaming,
+ * and object repository persistence updates.
+ */
 public class MobileORObject extends UndoRedoModel implements ORObjectInf {
 
     @JacksonXmlProperty(isAttribute = true, localName = "ref")
@@ -70,10 +76,11 @@ public class MobileORObject extends UndoRedoModel implements ORObjectInf {
         changeSave();
         if (group.getObjects().size() == 1) {
             group.removeFromParent();
-        } else {
-            group.getObjects().remove(this);
-            FileUtils.deleteFile(getRepLocation());
         }
+        group.getObjects().remove(this);
+        if (!group.getParent().getRoot().getObjectRepository().isUsingYamlFormat()) {
+            FileUtils.deleteFile(getRepLocation());
+        } 
     }
 
     @Override
@@ -211,7 +218,14 @@ public class MobileORObject extends UndoRedoModel implements ORObjectInf {
     @JsonIgnore
     private void changeSave() {
         if (group != null) {
-            ((MobileORPage) group.getParent()).getRoot().setSaved(false);
+            MobileORPage page = (MobileORPage) group.getParent();
+            page.getRoot().setSaved(false);
+            
+            // Auto-save for YAML format
+            if (page.getRoot().getObjectRepository() != null 
+                && page.getRoot().getObjectRepository().isUsingYamlFormat()) {
+                page.getRoot().getObjectRepository().saveMobilePageNow(page);
+            }
         }
     }
 
@@ -294,24 +308,25 @@ public class MobileORObject extends UndoRedoModel implements ORObjectInf {
 
     @JsonIgnore
     @Override
-    public Class<?> getColumnClass(int i) {
-        return super.getColumnClass(i);
+    public Class<?> getColumnClass(int column) {
+        return String.class;
     }
 
+    @JsonIgnore
     @Override
     public Boolean rename(String newName) {
-        Boolean flag = true;
         if (getParent().getChildCount() == 1) {
-            flag = getParent().rename(newName);
+            getParent().rename(newName);
         }
-        if (flag && getParent().getObjectByName(newName) == null) {
-            if (FileUtils.renameFile(getRepLocation(), newName)) {
-                setName(newName);
-                changeSave();
-                return true;
-            }
+        if (newName == null || newName.isBlank()) {
+            return false;
         }
-        return false;
+        if (getParent().getObjectByName(newName) != null) {
+            return false;
+        }
+        setName(newName);
+        changeSave();
+        return true;
     }
 
     @JsonIgnore

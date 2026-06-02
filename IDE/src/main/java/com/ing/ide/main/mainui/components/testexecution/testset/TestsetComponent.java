@@ -35,6 +35,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableColumnModel;
@@ -43,7 +44,7 @@ import javax.swing.table.TableColumnModel;
  *
  * 
  */
-public class TestsetComponent extends JPanel implements ActionListener {
+public class TestSetComponent extends JPanel implements ActionListener {
 
     private final TestExecution testExecution;
 
@@ -63,7 +64,7 @@ public class TestsetComponent extends JPanel implements ActionListener {
 
     private Thread runner;
 
-    public TestsetComponent(TestExecution testExecution) {
+    public TestSetComponent(TestExecution testExecution) {
         this.testExecution = testExecution;
         testSetTable = new XTable() {
 
@@ -90,8 +91,10 @@ public class TestsetComponent extends JPanel implements ActionListener {
     private void init() {
         new StatusSorter();
         setLayout(new BorderLayout());
+        
         add(toolBar, BorderLayout.NORTH);
-        add(new JScrollPane(testSetTable), BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(testSetTable);
+        add(scrollPane, BorderLayout.CENTER);
         testSetTable.setComponentPopupMenu(popupMenu);
         initTableListeners();
         initRunner();
@@ -597,7 +600,7 @@ public class TestsetComponent extends JPanel implements ActionListener {
         }
 
         private JMenuItem create(String text, String actionCommand) {
-            JMenuItem menuItem = Utils.createMenuItem(text, TestsetComponent.this);
+            JMenuItem menuItem = Utils.createMenuItem(text, TestSetComponent.this);
             menuItem.setActionCommand(actionCommand);
             return menuItem;
         }

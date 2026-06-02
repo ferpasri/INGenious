@@ -2,11 +2,13 @@
 package com.ing.datalib.or.common;
 
 import com.ing.datalib.component.utils.FileUtils;
+import com.ing.datalib.or.ObjectRepository;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.ing.datalib.or.web.WebORObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -91,8 +93,23 @@ public class ObjectGroup<T extends ORObjectInf> implements TreeNode {
         if (getObjectByName(objectName) == null) {
             T object = getNewObject(objectName, this);
             objects.add(object);
-            new File(object.getRepLocation()).mkdirs();
+            // Only create folder for non-YAML formats (WebOR, MobileOR in legacy mode)
+            ObjectRepository objRepo = parent.getRoot().getObjectRepository();
+            if (objRepo == null || !objRepo.isUsingYamlFormat()) {
+                new File(object.getRepLocation()).mkdirs();
+            }
             parent.getRoot().setSaved(false);
+            
+            // Auto-save for YAML format
+            if (parent.getRoot().getObjectRepository() != null 
+                && parent.getRoot().getObjectRepository().isUsingYamlFormat()) {
+                // Trigger save at the page level
+                if (parent instanceof com.ing.datalib.or.web.WebORPage) {
+                    parent.getRoot().getObjectRepository().saveWebPageNow((com.ing.datalib.or.web.WebORPage) parent);
+                } else if (parent instanceof com.ing.datalib.or.mobile.MobileORPage) {
+                    parent.getRoot().getObjectRepository().saveMobilePageNow((com.ing.datalib.or.mobile.MobileORPage) parent);
+                }
+            }
             return object;
         } else {
             return getObjectByName(objectName);
@@ -179,11 +196,22 @@ public class ObjectGroup<T extends ORObjectInf> implements TreeNode {
     @JsonIgnore
     public Boolean rename(String newName) {
         if (getParent().getObjectGroupByName(newName) == null) {
-            if (FileUtils.renameFile(getRepLocation(), newName)) {
-                getParent().getRoot().getObjectRepository().renameObject(this, newName);
+            // Check if using YAML format
+            if (getParent().getRoot().getObjectRepository().isUsingYamlFormat()) {
+                // For YAML format, objects are stored within the page YAML file
+                // Just update the name and mark the page as needing save
+                getParent().getRoot().getObjectRepository().renameObject((ObjectGroup<WebORObject>) this, newName);
                 setName(newName);
                 getParent().getRoot().setSaved(false);
                 return true;
+            } else {
+                // Use original XML folder-based rename
+                if (FileUtils.renameFile(getRepLocation(), newName)) {
+                    getParent().getRoot().getObjectRepository().renameObject((ObjectGroup<WebORObject>) this, newName);
+                    setName(newName);
+                    getParent().getRoot().setSaved(false);
+                    return true;
+                }
             }
         }
         return false;

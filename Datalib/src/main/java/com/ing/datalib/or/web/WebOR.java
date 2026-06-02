@@ -6,6 +6,7 @@ import com.ing.datalib.or.common.ORRootInf;
 import com.ing.datalib.or.common.ORUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
@@ -17,6 +18,11 @@ import java.util.Enumeration;
 import java.util.List;
 import javax.swing.tree.TreeNode;
 
+/**
+ * Represents the Web Object Repository (WebOR), containing pages and their objects,
+ * along with metadata such as scope, type, associated projects, and save state.
+ * Provides page management, tree navigation, sorting, and repository integration.
+ */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JacksonXmlRootElement(localName = "Root")
 public class WebOR implements ORRootInf<WebORPage> {
@@ -43,12 +49,22 @@ public class WebOR implements ORRootInf<WebORPage> {
 
     @JacksonXmlProperty(isAttribute = true)
     private String type;
+    
+    @JacksonXmlProperty(isAttribute = true)
+    private ORScope scope = ORScope.PROJECT;
+    
+    @JacksonXmlElementWrapper(localName = "projects")
+    @JacksonXmlProperty(localName = "project")
+    private List<String> projects = new ArrayList<>();
 
     @JsonIgnore
     private ObjectRepository objectRepository;
 
     @JsonIgnore
     private Boolean saved = true;
+    
+    @JsonIgnore
+    private String repLocationOverride;
 
     public WebOR() {
         this.pages = new ArrayList<>();
@@ -80,6 +96,9 @@ public class WebOR implements ORRootInf<WebORPage> {
         this.pages = pages;
         for (WebORPage page : pages) {
             page.setRoot(this);
+            if (page.getSource() == null || page.getSource().isBlank()) {
+                page.setSource(isShared() ? "SHARED" : "PROJECT");
+            }
         }
     }
 
@@ -131,8 +150,17 @@ public class WebOR implements ORRootInf<WebORPage> {
         if (getPageByName(pageName) == null) {
             WebORPage page = new WebORPage(pageName, this);
             pages.add(page);
-            new File(page.getRepLocation()).mkdirs();
+            page.setSource(isShared() ? "SHARED" : "PROJECT");
+            // Only create folder for non-YAML formats
+            if (objectRepository == null || !objectRepository.isUsingYamlFormat()) {
+                new File(page.getRepLocation()).mkdirs();
+            }
             setSaved(false);
+            
+            // Auto-save for YAML format
+            if (objectRepository != null && objectRepository.isUsingYamlFormat()) {
+                objectRepository.saveWebPageNow(page);
+            }
             return page;
         } else {
             return getPageByName(pageName);
@@ -228,14 +256,47 @@ public class WebOR implements ORRootInf<WebORPage> {
     }
 
     @JsonIgnore
+    public void setRepLocationOverride(String path) {
+        this.repLocationOverride = path;
+    }
+
+    @JsonIgnore
     @Override
     public String getRepLocation() {
-        return getObjectRepository().getORRepLocation();
+        return repLocationOverride != null
+            ? repLocationOverride
+            : getObjectRepository().getORRepLocation();
     }
 
     @JsonIgnore
     @Override
     public void sort() {
         ORUtils.sort(this);
+    }
+    
+    public enum ORScope { 
+        PROJECT, SHARED 
+    }
+
+    @JsonIgnore
+    public ORScope getScope() { 
+        return scope; 
+    }
+    
+    public void setScope(ORScope scope) { 
+        this.scope = scope; 
+    }
+
+    @JsonIgnore
+    public boolean isShared() { 
+        return scope == ORScope.SHARED; 
+    }
+    
+    public List<String> getSharedProjects() {
+        return isShared() ? projects : Collections.emptyList();
+    }
+
+    public void setSharedProjects(List<String> projects) {
+        this.projects = projects;
     }
 }

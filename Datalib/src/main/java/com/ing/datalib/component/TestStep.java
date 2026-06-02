@@ -1,6 +1,9 @@
 
 package com.ing.datalib.component;
 
+import com.ing.datalib.or.mobile.ResolvedMobileObject;
+import com.ing.datalib.or.structureddata.ResolvedStructuredDataObject;
+import com.ing.datalib.or.web.ResolvedWebObject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -8,8 +11,10 @@ import java.util.Objects;
 import org.apache.commons.csv.CSVRecord;
 
 /**
- *
- * 
+ * Represents a single step within a {@link TestCase}, storing action, object,
+ * input and related fields. Integrates with the test case table model, supports
+ * reusable/page‑object step detection, and provides utilities such as comment
+ * and breakpoint toggling.
  */
 public class TestStep {
 
@@ -44,27 +49,31 @@ public class TestStep {
 
     }
 
-    private final TestCase testcase;
+    private final TestCase testCase;
 
     List<String> stepDetails = Collections.synchronizedList(new ArrayList<String>(HEADERS.values().length) {
         @Override
         public String set(int index, String element) {
             String val = super.set(index, element);
-            if (testcase != null && testcase.getTestSteps().contains(TestStep.this)) {
-                testcase.fireTableCellUpdated(testcase.getTestSteps().indexOf(TestStep.this),
+            if (testCase != null && testCase.getTestSteps().contains(TestStep.this)) {
+                testCase.fireTableCellUpdated(testCase.getTestSteps().indexOf(TestStep.this),
                         index);
             }
             return val;
         }
     });
+    
+    public List<String> getStepDetails(){
+        return this.stepDetails;
+    }
 
     public TestStep(TestCase testcase, CSVRecord record) {
-        this.testcase = testcase;
+        this.testCase = testcase;
         loadStep(record);
     }
 
     public TestStep(TestCase testcase) {
-        this.testcase = testcase;
+        this.testCase = testcase;
         loadEmptyStep();
     }
 
@@ -131,18 +140,18 @@ public class TestStep {
     }
 
     public Project getProject() {
-        return testcase.getProject();
+        return testCase.getProject();
     }
 
-    public TestCase getTestcase() {
-        return testcase;
+    public TestCase getTestCase() {
+        return testCase;
     }
 
     private void loadStep(CSVRecord record) {
         for (int i = 0; i < record.size(); i++) {
             stepDetails.add(record.get(i));
         }
-        while (stepDetails.size() != HEADERS.values().length) {
+        while (stepDetails.size() < HEADERS.values().length) {
             stepDetails.add("");
         }
     }
@@ -188,7 +197,6 @@ public class TestStep {
     }
 
     public TestStep asReusableStep(String scenario, String reusable) {
-        clearValues();
         setAction(scenario + ":" + reusable);
         setObject("Execute");
         return this;
@@ -197,6 +205,39 @@ public class TestStep {
     public TestStep asObjectStep(String objectName, String pageName) {
         setObject(objectName);
         setReference(pageName);
+        return this;
+    }
+
+    public TestStep asObjectStep(ResolvedWebObject rwo) {
+        setObject(rwo.getObjectName());
+        setReference(
+            new ResolvedWebObject.PageRef(
+                rwo.getPageName(),
+                rwo.getScope()
+            ).qualified()
+        );
+        return this;
+    }
+
+    public TestStep asObjectStep(ResolvedMobileObject rmo) {
+        setObject(rmo.getObjectName());
+        setReference(
+            new ResolvedMobileObject.PageRef(
+                rmo.getPageName(),
+                rmo.getScope()
+            ).qualified()
+        );
+        return this;
+    }
+
+    public TestStep asObjectStep(ResolvedStructuredDataObject rsdo) {
+        setObject(rsdo.getObjectName());
+        setReference(
+            new ResolvedStructuredDataObject.PageRef(
+                rsdo.getPageName(),
+                rsdo.getScope()
+            ).qualified()
+        );
         return this;
     }
 

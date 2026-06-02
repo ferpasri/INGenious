@@ -17,9 +17,16 @@ pom.xml.next
 #Binaries
 bin/
 
+# NPM
+node_modules/
+npm-debug.log
+
 # Release
 /Dist/release
 /Dist/release/**
+
+#Plugins
+/Resources/Plugins/**
 
 # IDE Generated Files
 nbproject
