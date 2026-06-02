@@ -241,11 +241,11 @@
 			<classifier>${mac.version}</classifier>
 		</dependency>
 		<!-- TESTAR tool and MCP dependencies -->
-		<!-- https://jitpack.io/com/github/TESTARtool/TESTAR_dev/v2.7.15/build.log -->
+		<!-- https://jitpack.io/com/github/TESTARtool/TESTAR_dev/v2.8.11/build.log -->
 		<dependency>
 			<groupId>com.github.TESTARtool.TESTAR_dev</groupId>
 			<artifactId>core</artifactId>
-			<version>v2.7.15</version>
+			<version>v2.8.11</version>
 		</dependency>
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>

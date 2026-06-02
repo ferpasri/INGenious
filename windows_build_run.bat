@@ -1,38 +1,72 @@
 @echo off
+setlocal
 
-:: Create clean distribution
+set "ROOT_DIR=%~dp0"
+pushd "%ROOT_DIR%"
+
+echo [1/5] Building ingenious-api...
+call mvn clean install -U --file ingenious-api\pom.xml
+if errorlevel 1 (
+    echo ERROR: ingenious-api build failed.
+    popd
+    exit /b 1
+)
+
+echo [2/5] Building full distribution...
 call mvn clean install -U --file pom.xml
-
-:: Define output directory
-set outputDir=Dist\target
-
-:: Find the correct ZIP file dynamically
-for /f %%F in ('dir /b "%outputDir%\ingenious-playwright-*-setup.zip"') do set "zipPath=%outputDir%\%%F"
-
-:: Check if a ZIP file was found
-if not defined zipPath (
-    echo ERROR: No ZIP file found in %outputDir%
+if errorlevel 1 (
+    echo ERROR: root build failed.
+    popd
     exit /b 1
 )
 
-:: Unzip using tar command
-tar -xf "%zipPath%" -C "%outputDir%"
+set "OUTPUT_DIR=Dist\target"
+set "ZIP_PATH="
 
-:: Find the extracted folder dynamically
-for /d %%D in ("%outputDir%\ingenious-playwright-*") do set "appDir=%%D"
+echo [3/5] Locating packaged ZIP...
+for /f %%F in ('dir /b /o:-d "%OUTPUT_DIR%\ingenious-playwright-*-setup.zip"') do (
+    set "ZIP_PATH=%OUTPUT_DIR%\%%F"
+    goto :zip_found
+)
 
-:: Check if extraction was successful
-if not defined appDir (
-    echo ERROR: Extraction failed or folder not found.
+:zip_found
+if not defined ZIP_PATH (
+    echo ERROR: No ZIP file found in %OUTPUT_DIR%
+    popd
     exit /b 1
 )
 
-:: Run the extracted batch file
-set "runner=%appDir%\Run.bat"
+echo [4/5] Extracting %ZIP_PATH%...
+tar -xf "%ZIP_PATH%" -C "%OUTPUT_DIR%"
+if errorlevel 1 (
+    echo ERROR: Failed to extract %ZIP_PATH%
+    popd
+    exit /b 1
+)
 
-if exist "%runner%" (
-    call "%runner%"
+set "APP_DIR="
+for /d %%D in ("%OUTPUT_DIR%\ingenious-playwright-*") do (
+    if /i not "%%~nxD"=="setup" (
+        set "APP_DIR=%%D"
+    )
+)
+
+if not defined APP_DIR (
+    echo ERROR: Extraction failed or app folder not found.
+    popd
+    exit /b 1
+)
+
+set "RUNNER=%APP_DIR%\ingenious.bat"
+
+echo [5/5] Launching %RUNNER%...
+if exist "%RUNNER%" (
+    call "%RUNNER%"
 ) else (
-    echo ERROR: Runner script not found: %runner%
+    echo ERROR: Runner script not found: %RUNNER%
+    popd
     exit /b 1
 )
+
+popd
+endlocal

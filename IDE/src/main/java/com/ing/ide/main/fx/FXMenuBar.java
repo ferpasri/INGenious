@@ -214,6 +214,12 @@ public class FXMenuBar extends JFXPanel {
         );
         tools.getItems().add(sapRecording);
 
+        Menu testarScriptless = new Menu("TESTAR Scriptless");
+        testarScriptless.getItems().add(
+                menuItem("MCP Agent", "testdesign")
+        );
+        tools.getItems().add(testarScriptless);
+
         tools.getItems().add(
                 menuItem("Har Compare", "search", KeyCode.H, KeyCombination.SHORTCUT_DOWN, KeyCombination.SHIFT_DOWN));
 

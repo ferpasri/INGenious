@@ -411,7 +411,19 @@ public class PlaywrightMcpDriver implements McpInterface {
         // At the end of the generated sequence, save the generated INGenious testCase
         dataWriter.saveExecutionSteps();
         // Then, close the playwright session
-        this.system.stop();
+        if (this.system == null) {
+            addInfoLog("stopTestExecution called without an active Playwright session.");
+            return;
+        }
+
+        try {
+            this.system.stop();
+        } catch (Exception e) {
+            addSevereLog("Failed to stop Playwright session: " + e.getMessage());
+        } finally {
+            this.system = null;
+            this.state = null;
+        }
     }
 
     private void addInfoLog(String msg){

@@ -91,13 +91,16 @@ public class TESTARDataWriter {
 
     private Scenario setResuableStepScenario() {
         // Prepare an INGenious low-level steps scenario to be a reusable component
-        String resuableStepDefinitionsScenarioName = "StepDefinitions_" + this.mainTestCase.getName();
-        Scenario existingReusableStepScenario = this.project.getScenarioByName(resuableStepDefinitionsScenarioName);
+        String resuableStepDefinitionsScenarioName = sanitizeScenarioName(this.bddScenarioName);
+        if (resuableStepDefinitionsScenarioName.isEmpty()) {
+            resuableStepDefinitionsScenarioName = "BDD-MCP-Reusable";
+        }
+        Scenario existingReusableStepScenario = this.project.getReusableScenarioByName(resuableStepDefinitionsScenarioName);
         if (existingReusableStepScenario != null) {
             return existingReusableStepScenario;
         }
-        Scenario created = this.project.addScenario(resuableStepDefinitionsScenarioName);
-        return created != null ? created : this.project.getScenarioByName(resuableStepDefinitionsScenarioName);
+        Scenario created = this.project.addReusableScenario(resuableStepDefinitionsScenarioName);
+        return created != null ? created : this.project.getReusableScenarioByName(resuableStepDefinitionsScenarioName);
     }
 
     /** Add the action-element info into INGenious */

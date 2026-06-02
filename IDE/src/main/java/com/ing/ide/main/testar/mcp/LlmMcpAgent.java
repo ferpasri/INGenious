@@ -61,8 +61,8 @@ public class LlmMcpAgent {
     }
 
     public String runLLMAgent() {
-        // Prepare the messages and tools data to be sent to the LLM
-        final List<Map<String, Object>> messages = defineMessages();
+        // Prepare the input and tools data to be sent to the LLM
+        final List<Map<String, Object>> input = defineInput();
         final List<Map<String, Object>> tools = McpToolBuilder.from(McpInterface.class);
         final McpToolExecutor<McpInterface> executor = McpToolExecutor.of(McpInterface.class, mcpInterface, mapper);
 
@@ -77,11 +77,12 @@ public class LlmMcpAgent {
             body.put("tools", tools);
             body.put("tool_choice", "auto");
             if (isReasoningModel(openaiModel)) {
-                body.put("reasoning_effort", reasoningLevel);
+                body.put("reasoning", Map.of("effort", reasoningLevel));
             }
 
-            // put messages last as this is 'variable' content
-            body.put("messages", messages);
+            // Put instructions and input last as this is the variable content.
+            body.put("instructions", buildInstructions());
+            body.put("input", input);
 
             try (Response response = client.newCall(
                     new Request.Builder()
@@ -123,39 +124,40 @@ public class LlmMcpAgent {
                         }
                     }
                 } else {
-                    List<Map<String, Object>> toolCallResultMessages = new ArrayList<>();
-                    List<Map<String, Object>> userMessages = new ArrayList<>();
+                    List<Map<String, Object>> toolCallResultItems = new ArrayList<>();
+                    List<Map<String, Object>> userInputItems = new ArrayList<>();
 
                     // if response is successful
                     String json = Objects.requireNonNull(response.body()).string();
 
                     Map<?, ?> parsed = mapper.readValue(json, Map.class);
                     logTokenUsage((Map<?, ?>) parsed.get("usage"));
-                    Map<?, ?> choice = ((List<Map<?, ?>>) parsed.get("choices")).get(0);
-                    Map<?, ?> message = (Map<?, ?>) choice.get("message");
+                    List<Map<String, Object>> outputItems = castListOfMaps(parsed.get("output"));
 
-                    messages.add((Map<String, Object>) message);
+                    if (outputItems != null && !outputItems.isEmpty()) {
+                        input.addAll(outputItems);
+                    }
 
-                    // Read all tool_calls (array)
-                    List<Map<?, ?>> toolCalls = (List<Map<?, ?>>) message.get("tool_calls");
+                    List<Map<String, Object>> toolCalls = findFunctionCalls(outputItems);
 
                     // Empty toolCalls response. Don't stop, give the LLM another chance
                     if (toolCalls == null || toolCalls.isEmpty()) {
                         String feedback = "ISSUE: No tool was selected. Please review the last results.";
                         addInfoLog(feedback);
-                        userMessages.add(Map.of(
-                                "role", "user",
-                                "content", "Reminder: choose a valid tool to proceed."
-                        ));
+                        String outputText = asText(parsed.get("output_text"));
+                        if (!outputText.isEmpty()) {
+                            addInfoLog("MODEL OUTPUT: " + outputText);
+                        }
+                        userInputItems.add(createUserTextInput("Reminder: choose a valid tool to proceed."));
+                        input.addAll(userInputItems);
                         continue;
                     }
 
                     // Execute all tool calls
-                    for (Map<?, ?> toolCall : toolCalls) {
-                        String callId = (String) toolCall.get("id");
-                        Map<?, ?> function = (Map<?, ?>) toolCall.get("function");
-                        String toolName = (String) function.get("name");
-                        String argumentsJson = (String) function.get("arguments");
+                    for (Map<String, Object> toolCall : toolCalls) {
+                        String callId = asText(toolCall.get("call_id"));
+                        String toolName = asText(toolCall.get("name"));
+                        String argumentsJson = asText(toolCall.get("arguments"));
 
                         addInfoLog("DEBUG toolName: " + toolName);
                         addInfoLog("DEBUG argumentsJson: " + argumentsJson);
@@ -172,23 +174,20 @@ public class LlmMcpAgent {
                         // Reply to this tool call first
                         boolean requireStateImage = McpNames.of(McpInterface::getStateImage).equals(toolName);
                         String toolContent = requireStateImage ? "screenshot_ready" : result;
-                        toolCallResultMessages.add(Map.of(
-                                "role", "tool",
-                                "tool_call_id", callId,
-                                "content", toolContent
+                        toolCallResultItems.add(Map.of(
+                                "type", "function_call_output",
+                                "call_id", callId,
+                                "output", toolContent
                         ));
 
                         // If required, additionally add the image user message
                         if (requireStateImage && !result.isEmpty() && supportsVision(openaiModel)) {
                             addInfoLog("VISION REQUEST: attaching state image");
-                            attachStateImage(userMessages, result);
+                            attachStateImage(userInputItems, result);
                             visionRequest = true;
                         } else if (requireStateImage && !result.isEmpty()) {
                             addInfoLog("VISION REQUEST: is omitted for this model or by the user");
-                            userMessages.add(Map.of(
-                                    "role", "user",
-                                    "content", "Screenshot captured (omitted for this model)."
-                            ));
+                            userInputItems.add(createUserTextInput("Screenshot captured (omitted for this model)."));
                             // add vision request for the next iteration
                         } else {
                             // This is only for debugging purposes
@@ -196,10 +195,10 @@ public class LlmMcpAgent {
                         }
                     }
 
-                    // Tool results first
-                    messages.addAll(toolCallResultMessages);
-                    // User messages second
-                    messages.addAll(userMessages);
+                    // Tool results first.
+                    input.addAll(toolCallResultItems);
+                    // User messages second.
+                    input.addAll(userInputItems);
 
                     // step if there are no exceptions
                     step++;
@@ -222,36 +221,24 @@ public class LlmMcpAgent {
         return "maxAction executed";
     }
 
-    private List<Map<String, Object>> defineMessages() {
-        List<Map<String, Object>> messages = new ArrayList<>();
+    private String buildInstructions() {
+        return "You are a BDD-GUI test agent. " +
+                "Your goal is to complete the BDD instructions. " +
+                "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeFillAction, and executeSelectAction functions. " +
+                "Use getCurrentURL and checkExecutedActions functions if you need assistance. " +
+                "Use navigateBack function if you need to control the web browser. " +
+                "After completing each BDD step (Given, When, Then), use (getStateImage or getStateVisualText) and addStepAssert functions to validate that step. " +
+                "When asserting all BDD instructions, use the stopTestExecution function.";
+    }
 
-        messages.add(Map.of(
-                "role", "system",
-                "content", "You are a BDD-GUI test agent. " +
-                        "Your goal is to complete the BDD instructions. " +
-                        "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeFillAction, and executeSelectAction functions. " +
-                        "Use getCurrentURL and checkExecutedActions functions if you need assistance. " +
-                        "Use navigateBack function if you need to control the web browser. " +
-                        "After completing each BDD step (Given, When, Then), use (getStateImage or getStateVisualText) and addStepAssert functions to validate that step. " +
-                        "When asserting all BDD instructions, use the stopTestExecution function.")
-        );
+    private List<Map<String, Object>> defineInput() {
+        List<Map<String, Object>> input = new ArrayList<>();
 
-        messages.add(Map.of(
-                "role", "user",
-                "content", "Begin by load the web url to be tested.")
-        );
+        input.add(createUserTextInput("Begin by load the web url to be tested."));
+        input.add(createUserTextInput("Get the current GUI state to obtain the available web elements."));
+        input.add(createUserTextInput(this.bddInstructions));
 
-        messages.add(Map.of(
-                "role", "user",
-                "content", "Get the current GUI state to obtain the available web elements.")
-        );
-
-        messages.add(Map.of(
-                "role", "user",
-                "content", this.bddInstructions)
-        );
-
-        return messages;
+        return input;
     }
 
     private boolean supportsVision(String model) {
@@ -265,18 +252,57 @@ public class LlmMcpAgent {
         return m.startsWith("gpt-5");
     }
 
-    private static void attachStateImage(List<Map<String, Object>> messages, String base64Png) {
-        Map<String, Object> imageMsg = new HashMap<>();
-        imageMsg.put("role", "user");
+    private Map<String, Object> createUserTextInput(String text) {
+        Map<String, Object> content = new LinkedHashMap<>();
+        content.put("type", "input_text");
+        content.put("text", text);
 
-        List<Map<String, Object>> content = new ArrayList<>();
-        content.add(Map.of("type", "text", "text", "Here is the current GUI state."));
-        Map<String, Object> imageUrl = new HashMap<>();
-        imageUrl.put("url", "data:image/png;base64," + base64Png);
-        content.add(Map.of("type", "image_url", "image_url", imageUrl));
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("role", "user");
+        input.put("content", List.of(content));
+        return input;
+    }
 
-        imageMsg.put("content", content);
-        messages.add(imageMsg);
+    private static void attachStateImage(List<Map<String, Object>> inputItems, String base64Png) {
+        Map<String, Object> text = new LinkedHashMap<>();
+        text.put("type", "input_text");
+        text.put("text", "Here is the current GUI state.");
+
+        Map<String, Object> image = new LinkedHashMap<>();
+        image.put("type", "input_image");
+        image.put("image_url", "data:image/png;base64," + base64Png);
+        image.put("detail", "high");
+
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("role", "user");
+        input.put("content", List.of(text, image));
+        inputItems.add(input);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> castListOfMaps(Object value) {
+        if (!(value instanceof List<?>)) {
+            return Collections.emptyList();
+        }
+        return (List<Map<String, Object>>) value;
+    }
+
+    private List<Map<String, Object>> findFunctionCalls(List<Map<String, Object>> outputItems) {
+        List<Map<String, Object>> toolCalls = new ArrayList<>();
+        if (outputItems == null) {
+            return toolCalls;
+        }
+
+        for (Map<String, Object> item : outputItems) {
+            if ("function_call".equals(asText(item.get("type")))) {
+                toolCalls.add(item);
+            }
+        }
+        return toolCalls;
+    }
+
+    private String asText(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 
     private void addInfoLog(String msg) {

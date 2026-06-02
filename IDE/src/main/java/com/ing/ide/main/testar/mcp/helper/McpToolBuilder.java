@@ -93,14 +93,12 @@ public final class McpToolBuilder {
             params.put("additionalProperties", false);
             params.put("required", required);
 
-            Map<String,Object> function = new LinkedHashMap<>();
-            function.put("name", name);
-            function.put("description", mcpMethod.description());
-            function.put("parameters", params);
-
             Map<String,Object> tool = new LinkedHashMap<>();
             tool.put("type", "function");
-            tool.put("function", function);
+            tool.put("name", name);
+            tool.put("description", mcpMethod.description());
+            tool.put("parameters", params);
+            tool.put("strict", Boolean.TRUE);
 
             functionsMap.add(tool);
         }

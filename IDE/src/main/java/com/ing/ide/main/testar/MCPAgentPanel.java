@@ -6,6 +6,7 @@ import com.ing.ide.main.mainui.components.testdesign.tree.model.ReusableTreeMode
 import com.ing.ide.main.testar.mcp.LlmMcpAgent;
 import com.ing.ide.main.testar.mcp.McpAgentSettings;
 import com.ing.ide.settings.IconSettings;
+import com.ing.ide.util.Notification;
 
 import javax.swing.*;
 import java.awt.*;
@@ -56,7 +57,7 @@ public class MCPAgentPanel {
 		JTextField apiUrlField = new JTextField(100);
 		String apiUrlDefault = settings.apiUrl != null
 				? settings.apiUrl
-				: "https://api.githubcopilot.com/chat/completions";
+				: "https://api.openai.com/v1/responses";
 		apiUrlField.setText(apiUrlDefault);
 		formPanel.add(apiUrlLabel);
 		formPanel.add(apiUrlField);
@@ -65,14 +66,14 @@ public class MCPAgentPanel {
 		JTextField apiKeyEnvVarField = new JTextField(40);
 		String apiEnvDefault = settings.apiKeyEnvVarName != null
 				? settings.apiKeyEnvVarName
-				: "GITHUB_TOKEN";
+				: "OPENAI_API";
 		apiKeyEnvVarField.setText(apiEnvDefault);
 		formPanel.add(apiKeyEnvVarLabel);
 		formPanel.add(apiKeyEnvVarField);
 
 		JLabel openaiLabel = new JLabel("OpenAI model:");
 		JTextField openaiTextField = new JTextField(40);
-		String modelDefault = settings.openaiModel != null ? settings.openaiModel : "gpt-4o";
+		String modelDefault = settings.openaiModel != null ? settings.openaiModel : "gpt-5.4-mini";
 		openaiTextField.setText(modelDefault);
 		formPanel.add(openaiLabel);
 		formPanel.add(openaiTextField);
@@ -136,7 +137,8 @@ public class MCPAgentPanel {
 			settings.reasoningLevel = (String) reasoningCombo.getSelectedItem();
 			settings.maxActions = (Integer) actionsSpinner.getValue();
 			settings.bddScenarioName = bddScenarioNameField.getText().trim();
-			settings.bddInstructions = bddInstructionsTextArea.getText();
+			settings.bddInstructions = normalizeBddInstructions(bddInstructionsTextArea.getText());
+			bddInstructionsTextArea.setText(settings.bddInstructions);
 
 			// keep in-memory default in sync as well
 			defaultBDDName = settings.bddScenarioName;
@@ -150,8 +152,7 @@ public class MCPAgentPanel {
 				saveFromUi.run();
 
 				// Disable interaction with the dialog panel elements
-				setComponentsEnabled(dialog.getContentPane(), false);
-				dialog.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+				setDialogBusy(dialog, true);
 
 				String apiKeyEnvVar = apiKeyEnvVarField.getText().trim();
 				String apiUrl = apiUrlField.getText().trim();
@@ -160,19 +161,32 @@ public class MCPAgentPanel {
 				String reasoningLevel = (String) reasoningCombo.getSelectedItem();
 				int maxActions = (Integer) actionsSpinner.getValue();
 				String bddScenarioName = bddScenarioNameField.getText().trim();
-				String bddInstructions = bddInstructionsTextArea.getText();
+				String bddInstructions = normalizeBddInstructions(bddInstructionsTextArea.getText());
+				bddInstructionsTextArea.setText(bddInstructions);
 
-				LlmMcpAgent llmMcpAgent = new LlmMcpAgent(
-						sMainFrame.getProject(),
-						apiUrl,
-						apiKeyEnvVar,
-						openaiModel,
-						vision,
-						reasoningLevel,
-						maxActions,
-						bddScenarioName,
-						bddInstructions
-				);
+				final LlmMcpAgent llmMcpAgent;
+				try {
+					llmMcpAgent = new LlmMcpAgent(
+							sMainFrame.getProject(),
+							apiUrl,
+							apiKeyEnvVar,
+							openaiModel,
+							vision,
+							reasoningLevel,
+							maxActions,
+							bddScenarioName,
+							bddInstructions
+					);
+				} catch (Exception ex) {
+					setDialogBusy(dialog, false);
+					java.util.logging.Logger.getLogger(MCPAgentPanel.class.getName()).log(
+							java.util.logging.Level.SEVERE,
+							"Failed to initialize TESTAR MCP agent",
+							ex
+					);
+					Notification.show(ex.getMessage());
+					return;
+				}
 
 				SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
 					@Override
@@ -182,9 +196,21 @@ public class MCPAgentPanel {
 
 					@Override
 					protected void done() {
-						// Enable interaction with the panel when the worker is finished
-						setComponentsEnabled(dialog.getContentPane(), true);
-						dialog.setCursor(Cursor.getDefaultCursor());
+						setDialogBusy(dialog, false);
+						try {
+							String result = get();
+							if (result != null && !result.trim().isEmpty()) {
+								Notification.show(result);
+							}
+						} catch (Exception ex) {
+							java.util.logging.Logger.getLogger(MCPAgentPanel.class.getName()).log(
+									java.util.logging.Level.SEVERE,
+									"TESTAR MCP agent execution failed",
+									ex
+							);
+							String message = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
+							Notification.show(message != null ? message : "TESTAR MCP agent execution failed.");
+						}
 					}
 				};
 				worker.execute();
@@ -255,6 +281,25 @@ public class MCPAgentPanel {
 				setComponentsEnabled((Container) c, enabled);
 			}
 		}
+	}
+
+	private void setDialogBusy(JDialog dialog, boolean busy) {
+		setComponentsEnabled(dialog.getContentPane(), !busy);
+		dialog.setCursor(busy
+				? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+				: Cursor.getDefaultCursor());
+	}
+
+	private String normalizeBddInstructions(String text) {
+		if (text == null) {
+			return "";
+		}
+
+		return text
+				.replace('\u2018', '\'')
+				.replace('\u2019', '\'')
+				.replace('\u201C', '\'')
+				.replace('\u201D', '\'');
 	}
 
 	private void reloadReusableTree() {
