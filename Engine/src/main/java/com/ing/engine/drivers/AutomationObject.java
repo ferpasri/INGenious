@@ -23,7 +23,6 @@ import com.microsoft.playwright.FrameLocator;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
-import org.apache.logging.log4j.LogManager;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -31,10 +30,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AutomationObject implements AutomationObjectApi {
+
+    private static final Logger LOG = Logger.getLogger(AutomationObject.class.getName());
 
     public AutomationObject(CommandControl cc) {
         super();
@@ -154,7 +157,7 @@ public class AutomationObject implements AutomationObjectApi {
                     Thread.sleep(RETRY_DELAY_MS);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
-                    LogManager.getLogger().log(org.apache.logging.log4j.Level.WARN, "Retry interrupted", ie);
+                    LOG.log(Level.WARNING, "Retry interrupted", ie);
                     break;
                 }
             }
@@ -171,16 +174,16 @@ public class AutomationObject implements AutomationObjectApi {
                 } else {
                     int count = (locator != null) ? locator.count() : -1;
                     String msg = "Locator did not match exactly one element (matched " + count + "): " + locator;
-                    LogManager.getLogger().log(org.apache.logging.log4j.Level.WARN, msg);
+                    LOG.log(Level.WARNING, msg);
                 }
             } catch (Exception e) {
                 String msg = "Exception while evaluating locator: " + locator;
-                LogManager.getLogger().log(org.apache.logging.log4j.Level.ERROR, msg);
+                LOG.log(Level.SEVERE, msg, e);
             }
         }
 
         String msg = "No unique locator found from the provided list.";
-        LogManager.getLogger().log(org.apache.logging.log4j.Level.ERROR, msg);
+        LOG.log(Level.SEVERE, msg);
         return null;
     }
 
@@ -943,7 +946,7 @@ public class AutomationObject implements AutomationObjectApi {
                 }
             } catch (Exception e) {
                 String msg = String.format("Failed to create locator using [%s] with value [%s]", tag, value);
-                LogManager.getLogger().log(org.apache.logging.log4j.Level.ERROR, msg, e);
+                LOG.log(Level.SEVERE, msg, e);
             }
         }
         return elements.isEmpty() ? null : elements;

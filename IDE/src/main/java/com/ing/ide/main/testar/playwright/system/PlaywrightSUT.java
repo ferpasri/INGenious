@@ -3,9 +3,6 @@ package com.ing.ide.main.testar.playwright.system;
 import com.ing.ide.main.utils.Utils;
 import com.microsoft.playwright.*;
 import com.microsoft.playwright.options.LoadState;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.testar.monkey.alayer.SUTBase;
 import org.testar.monkey.alayer.exceptions.SystemStopException;
 
@@ -13,10 +10,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PlaywrightSUT extends SUTBase {
 
-    private static final Logger logger = LogManager.getLogger();
+    private static final Logger LOG = Logger.getLogger(PlaywrightSUT.class.getName());
 
     private final Browser browser;
     private final BrowserContext browserContext;
@@ -51,7 +50,7 @@ public class PlaywrightSUT extends SUTBase {
             browserContext.addInitScript(Files.readString(Paths.get(cssJavaScript)));
             browserContext.addInitScript(Files.readString(Paths.get(locatorsJavaScript)));
         } catch (IOException ioe) {
-            logger.log(Level.ERROR, "PlaywrightSUT: Failed to load the locator JavaScript files");
+            LOG.log(Level.SEVERE, "PlaywrightSUT: Failed to load the locator JavaScript files", ioe);
         }
     }
 
