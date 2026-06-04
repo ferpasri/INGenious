@@ -4,6 +4,7 @@ import com.ing.engine.cli.INGeniousCLI;
 import com.ing.engine.cli.commands.testar.daemon.TestarCliDaemonClient;
 import com.ing.engine.cli.commands.testar.daemon.TestarCliDaemonServer;
 import com.ing.engine.cli.commands.testar.daemon.TestarCliRequest;
+import com.ing.engine.cli.commands.testar.TestarBddGoalLoader.ResolvedBddGoal;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
@@ -83,10 +84,16 @@ public class TestarCommand implements Callable<Integer> {
             private String url;
 
             @Option(names = {"--bdd-scenario"}, description = "BDD scenario name for generated artifacts")
-            private String bddScenarioName = "BDD CLI Scenario";
+            private String bddScenarioName;
 
             @Option(names = {"--project", "-p"}, description = "Project path for generated TESTAR artifacts")
             private String projectPathOption;
+
+            @Option(names = {"--bdd-goal"}, description = "BDD goal id under .agents/bdd_goals, for example parabank/requested_loans_with_small_down_payments_must_be_denied")
+            private String bddGoalId;
+
+            @Option(names = {"--bdd-file"}, description = "Path to a BDD scenario file")
+            private String bddFilePath;
 
             @Override
             public Integer call() {
@@ -100,7 +107,29 @@ public class TestarCommand implements Callable<Integer> {
                     return 1;
                 }
 
-                return new ClientFacade().send(cli, "session.start", projectPath, bddScenarioName, url);
+                ResolvedBddGoal resolvedGoal;
+                try {
+                    resolvedGoal = TestarBddGoalLoader.resolve(
+                            bddGoalId,
+                            bddFilePath,
+                            bddScenarioName != null && !bddScenarioName.trim().isEmpty()
+                                    ? bddScenarioName.trim()
+                                    : "BDD CLI Scenario"
+                    );
+                } catch (IllegalArgumentException exception) {
+                    cli.printError(exception.getMessage());
+                    return 1;
+                }
+
+                return new ClientFacade().send(
+                        cli,
+                        "session.start",
+                        projectPath,
+                        resolvedGoal.getScenarioName(),
+                        resolvedGoal.getBddInstructions(),
+                        resolvedGoal.getSourcePath() != null ? resolvedGoal.getSourcePath().toString() : "",
+                        url
+                );
             }
         }
 

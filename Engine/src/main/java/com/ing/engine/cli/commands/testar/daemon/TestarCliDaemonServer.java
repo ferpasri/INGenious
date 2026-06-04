@@ -119,7 +119,11 @@ public final class TestarCliDaemonServer {
     private TestarCliResponse startSession(TestarCliRequest request) {
         String projectPath = request.argumentAt(0);
         String bddScenarioName = request.argumentAt(1);
-        String url = request.argumentAt(2);
+        String bddInstructions = request.getArguments().size() >= 5 ? request.argumentAt(2) : (request.getArguments().size() >= 4 ? request.argumentAt(2) : "");
+        String bddScenarioSource = request.getArguments().size() >= 5 ? request.argumentAt(3) : "";
+        String url = request.getArguments().size() >= 5
+                ? request.argumentAt(4)
+                : (request.getArguments().size() >= 4 ? request.argumentAt(3) : request.argumentAt(2));
 
         if (projectPath == null || projectPath.trim().isEmpty()) {
             return new TestarCliResponse(1, List.of("status=error", "message=Project path required."));
@@ -134,7 +138,7 @@ public final class TestarCliDaemonServer {
             return new TestarCliResponse(1, List.of("status=error", "message=No TESTAR automation backend available on the classpath."));
         }
 
-        return withDaemonMetadata(wrapResult(backend.startSession(projectPath, bddScenarioName, url)), true);
+        return withDaemonMetadata(wrapResult(backend.startSession(projectPath, bddScenarioName, bddInstructions, bddScenarioSource, url)), true);
     }
 
     private TestarCliResponse sessionStatus() {

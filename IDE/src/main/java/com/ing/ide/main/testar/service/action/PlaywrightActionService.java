@@ -51,6 +51,15 @@ public class PlaywrightActionService implements ActionService {
 
             String actionDescription = "Executed Click Action in the widget " + cssSelector;
             context.getExecutedActions().add(actionDescription);
+            context.getExecutedActionEntries().add(
+                    new SessionContext.ExecutedActionEntry(
+                            bddStep,
+                            "click",
+                            cssSelector,
+                            "",
+                            actionDescription
+                    )
+            );
 
             return Feedback.validContext(actionDescription);
         } catch (Exception e) {
@@ -91,6 +100,15 @@ public class PlaywrightActionService implements ActionService {
 
             String actionDescription = "Executed Fill Action " + fillText + " in the widget " + cssSelector;
             context.getExecutedActions().add(actionDescription);
+            context.getExecutedActionEntries().add(
+                    new SessionContext.ExecutedActionEntry(
+                            bddStep,
+                            "fill",
+                            cssSelector,
+                            fillText,
+                            actionDescription
+                    )
+            );
 
             return Feedback.validContext(actionDescription);
         } catch (Exception e) {
@@ -131,6 +149,15 @@ public class PlaywrightActionService implements ActionService {
 
             String actionDescription = "Select value " + optionValue + " in the widget " + cssSelector;
             context.getExecutedActions().add(actionDescription);
+            context.getExecutedActionEntries().add(
+                    new SessionContext.ExecutedActionEntry(
+                            bddStep,
+                            "select",
+                            cssSelector,
+                            optionValue,
+                            actionDescription
+                    )
+            );
 
             return Feedback.validContext(actionDescription);
         } catch (Exception e) {

@@ -6,6 +6,7 @@ import com.ing.ingenious.api.contract.testar.TestarResult;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public final class TestarCliSupport {
 
@@ -54,13 +55,17 @@ public final class TestarCliSupport {
         String status = result.getStatus() != null ? result.getStatus() : "unknown";
         String message = result.getMessage() != null ? result.getMessage() : "";
         String payload = result.getPayload() != null ? result.getPayload() : "";
+        Map<String, String> payloadEntries = parsePayloadEntries(payload);
 
         System.out.println("status: " + status);
         if (!message.isEmpty()) {
             System.out.println("message: " + message);
         }
-        if (!payload.isEmpty() && !payload.equals(message)) {
+        if (!payload.isEmpty() && !payload.equals(message) && payloadEntries.isEmpty()) {
             System.out.println("payload: " + payload);
+        }
+        for (Entry<String, String> entry : payloadEntries.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
         }
 
         for (Map.Entry<String, String> entry : values.entrySet()) {
@@ -103,6 +108,29 @@ public final class TestarCliSupport {
             }
         }
         return values;
+    }
+
+    private static Map<String, String> parsePayloadEntries(String payload) {
+        Map<String, String> entries = new LinkedHashMap<>();
+        if (payload == null || payload.isEmpty()) {
+            return entries;
+        }
+
+        String[] lines = payload.split("\\r?\\n");
+        for (String line : lines) {
+            int separatorIndex = line.indexOf(':');
+            if (separatorIndex <= 0) {
+                return new LinkedHashMap<>();
+            }
+
+            String key = line.substring(0, separatorIndex).trim();
+            String value = line.substring(separatorIndex + 1).trim();
+            if (key.isEmpty()) {
+                return new LinkedHashMap<>();
+            }
+            entries.put(key, value);
+        }
+        return entries;
     }
 
     private static String toJson(TestarResult result) {

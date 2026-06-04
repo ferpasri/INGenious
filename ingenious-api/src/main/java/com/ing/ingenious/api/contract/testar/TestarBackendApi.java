@@ -2,7 +2,7 @@ package com.ing.ingenious.api.contract.testar;
 
 public interface TestarBackendApi {
 
-    TestarResult startSession(String projectPath, String bddScenarioName, String url);
+    TestarResult startSession(String projectPath, String bddScenarioName, String bddInstructions, String bddScenarioSource, String url);
 
     TestarResult getSessionStatus();
 

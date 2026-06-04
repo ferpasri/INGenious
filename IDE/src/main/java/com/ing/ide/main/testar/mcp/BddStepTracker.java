@@ -18,27 +18,29 @@ public final class BddStepTracker {
     private List<String> parseBddInstructionList(String bddInstructions) {
         if (bddInstructions == null || bddInstructions.isBlank()) return Collections.emptyList();
         return Arrays.stream(bddInstructions.split("\\r?\\n"))
-                .map(String::trim)
+                .map(BddStepTracker::normalizeText)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toList());
     }
 
     public Feedback validateBddStep(String bddStep) {
-        if (bddStep == null || bddStep.trim().isEmpty()) {
+        String normalizedBddStep = normalizeText(bddStep);
+
+        if (normalizedBddStep.isEmpty()) {
             return Feedback.issue("The provided BDD step is empty or invalid.");
         }
 
-        if (!isOriginalBddInstruction(bddStep)) {
+        if (!isOriginalBddInstruction(normalizedBddStep)) {
             return Feedback.issue("The provided BDD step does not seem to match with original BDD instructions.");
         }
 
         // If the step is not the latest and was already executed, the mapping is trying to be done with an old previous step
-        if (!isLatestBddStep(bddStep) && hasExecutedBddStep(bddStep)) {
+        if (!isLatestBddStep(normalizedBddStep) && hasExecutedBddStep(normalizedBddStep)) {
             String message = String.format(
                     "The provided BDD step '%s' is not the current or a new step. " +
                     "This may create a mismatched BDD-action map. " + 
                     "Please refine the BDD step or just continue with other appropiated BDD steps.",
-                    bddStep
+                    normalizedBddStep
             );
             return Feedback.issue(message);
         }
@@ -46,10 +48,26 @@ public final class BddStepTracker {
         return null;
     }
 
-    public void saveExecutedBddStep(String bddStep){
-        if (!hasExecutedBddStep(bddStep)) {
-            executedSteps.add(bddStep);
+    public void saveExecutedBddStep(String bddStep) {
+        String normalizedBddStep = normalizeText(bddStep);
+        if (!normalizedBddStep.isEmpty() && !hasExecutedBddStep(normalizedBddStep)) {
+            executedSteps.add(normalizedBddStep);
         }
+    }
+
+    public List<String> getOriginalBddSteps() {
+        return Collections.unmodifiableList(originalBddStepsList);
+    }
+
+    public List<String> getExecutedBddSteps() {
+        return Collections.unmodifiableList(executedSteps);
+    }
+
+    public String getLatestExecutedBddStep() {
+        if (executedSteps.isEmpty()) {
+            return "";
+        }
+        return executedSteps.get(executedSteps.size() - 1);
     }
 
     private boolean hasExecutedBddStep(String bddStep) {
@@ -63,6 +81,19 @@ public final class BddStepTracker {
 
     private boolean isOriginalBddInstruction(String bddStep) {
         return originalBddStepsList.stream().anyMatch(s -> s.equalsIgnoreCase(bddStep));
+    }
+
+    public static String normalizeText(String text) {
+        if (text == null) {
+            return "";
+        }
+
+        return text
+                .replace('\u2018', '\'')
+                .replace('\u2019', '\'')
+                .replace('\u201C', '\'')
+                .replace('\u201D', '\'')
+                .trim();
     }
 
 }
