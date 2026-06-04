@@ -266,7 +266,7 @@ public class Control {
         // New CLI subcommands
         String[] newCommands = {
             "project", "scenario", "testcase", "action", "actions", 
-            "run", "report", "config", "server", "shell", 
+            "run", "report", "config", "server", "shell", "testar", 
             "interactive", "repl", "help", "--help", "-h", "--version"
         };
         

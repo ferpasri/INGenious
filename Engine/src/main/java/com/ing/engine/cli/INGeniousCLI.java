@@ -1,6 +1,7 @@
 package com.ing.engine.cli;
 
 import com.ing.engine.cli.commands.*;
+import com.ing.engine.cli.commands.testar.TestarCommand;
 import com.ing.engine.cli.output.OutputFormatter;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -33,6 +34,7 @@ import java.util.concurrent.Callable;
         ReportCommand.class,
         ConfigCommand.class,
         ServerCommand.class,
+        TestarCommand.class,
         ShellCommand.class,
         LegacyCommand.class
     },
