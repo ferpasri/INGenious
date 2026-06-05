@@ -5,6 +5,7 @@ import com.ing.ide.main.mainui.AppMainFrame;
 import com.ing.ide.main.mainui.components.testdesign.tree.model.ReusableTreeModel;
 import com.ing.ide.main.testar.mcp.LlmMcpAgent;
 import com.ing.ide.main.testar.mcp.McpAgentSettings;
+import com.ing.ide.main.testar.mcp.provider.LlmProviderFactory;
 import com.ing.ide.settings.IconSettings;
 import com.ing.ide.util.Notification;
 
@@ -21,7 +22,6 @@ public class MCPAgentPanel {
 
 	private final AppMainFrame sMainFrame;
 
-	private McpAgentSettings settings;
 	private static final Path SETTINGS_PATH = Paths.get(System.getProperty("user.home"), ".ingenious-mcp-settings.json");
 	private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
@@ -51,13 +51,21 @@ public class MCPAgentPanel {
 		JPanel inputPanel = new JPanel();
 		inputPanel.setLayout(new BorderLayout());
 
-		JPanel formPanel = new JPanel(new GridLayout(7, 2, 5, 5));
+		JPanel formPanel = new JPanel(new GridLayout(8, 2, 5, 5));
+		String[] providerModels = getProviderModels(LlmProviderFactory.normalizeProviderName(settings.llmProviderName));
+
+		JLabel providerLabel = new JLabel("LLM Provider:");
+		JComboBox<String> providerCombo = new JComboBox<>(LlmProviderFactory.supportedProviders());
+		String providerDefault = LlmProviderFactory.normalizeProviderName(settings.llmProviderName);
+		providerCombo.setSelectedItem(providerDefault);
+		formPanel.add(providerLabel);
+		formPanel.add(providerCombo);
 
 		JLabel apiUrlLabel = new JLabel("API URL:");
 		JTextField apiUrlField = new JTextField(100);
 		String apiUrlDefault = settings.apiUrl != null
 				? settings.apiUrl
-				: "https://api.openai.com/v1/responses";
+				: LlmProviderFactory.defaultApiUrlFor(providerDefault);
 		apiUrlField.setText(apiUrlDefault);
 		formPanel.add(apiUrlLabel);
 		formPanel.add(apiUrlField);
@@ -66,17 +74,20 @@ public class MCPAgentPanel {
 		JTextField apiKeyEnvVarField = new JTextField(40);
 		String apiEnvDefault = settings.apiKeyEnvVarName != null
 				? settings.apiKeyEnvVarName
-				: "OPENAI_API";
+				: LlmProviderFactory.defaultApiKeyEnvVarFor(providerDefault);
 		apiKeyEnvVarField.setText(apiEnvDefault);
 		formPanel.add(apiKeyEnvVarLabel);
 		formPanel.add(apiKeyEnvVarField);
 
-		JLabel openaiLabel = new JLabel("OpenAI model:");
-		JTextField openaiTextField = new JTextField(40);
-		String modelDefault = settings.openaiModel != null ? settings.openaiModel : "gpt-5.4-mini";
-		openaiTextField.setText(modelDefault);
+		JLabel openaiLabel = new JLabel("Model:");
+		JComboBox<String> modelCombo = new JComboBox<>(providerModels);
+		modelCombo.setEditable(true);
+		String modelDefault = settings.openaiModel != null
+				? settings.openaiModel
+				: LlmProviderFactory.defaultModelFor(providerDefault);
 		formPanel.add(openaiLabel);
-		formPanel.add(openaiTextField);
+		formPanel.add(modelCombo);
+		modelCombo.setSelectedItem(modelDefault);
 
 		JLabel visionLabel = new JLabel("Vision:");
 		JCheckBox visionCheckBox = new JCheckBox("Enable vision");
@@ -86,7 +97,7 @@ public class MCPAgentPanel {
 		formPanel.add(visionCheckBox);
 
 		JLabel reasoningLabel = new JLabel("Reasoning effort:");
-		String[] reasoningOptions = { "none", "minimal", "low", "medium", "high" };
+		String[] reasoningOptions = { "none", "low", "medium", "high" };
 		JComboBox<String> reasoningCombo = new JComboBox<>(reasoningOptions);
 		String reasoningDefault = settings.reasoningLevel != null ? settings.reasoningLevel : "none";
 		reasoningCombo.setSelectedItem(reasoningDefault);
@@ -108,7 +119,60 @@ public class MCPAgentPanel {
 		formPanel.add(bddScenarioNameLabel);
 		formPanel.add(bddScenarioNameField);
 
-		inputPanel.add(formPanel, BorderLayout.NORTH);
+		JToggleButton advancedToggle = new JToggleButton("Advanced");
+		JPanel advancedPanel = new JPanel(new GridLayout(1, 2, 5, 5));
+		advancedPanel.setVisible(false);
+		JLabel numRunsLabel = new JLabel("Num Runs (batch):");
+		JSpinner numRunsSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 50, 1));
+		int numRunsDefault = settings.numRuns != null ? settings.numRuns : 1;
+		numRunsSpinner.setValue(numRunsDefault);
+		advancedPanel.add(numRunsLabel);
+		advancedPanel.add(numRunsSpinner);
+
+		providerCombo.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				String selectedProvider = (String) providerCombo.getSelectedItem();
+				if (selectedProvider == null) {
+					return;
+				}
+
+				Object currentSelection = modelCombo.getSelectedItem();
+				modelCombo.removeAllItems();
+				for (String providerModel : getProviderModels(selectedProvider)) {
+					modelCombo.addItem(providerModel);
+				}
+
+				apiUrlField.setText(LlmProviderFactory.defaultApiUrlFor(selectedProvider));
+				apiKeyEnvVarField.setText(LlmProviderFactory.defaultApiKeyEnvVarFor(selectedProvider));
+				if (currentSelection == null || currentSelection.toString().isBlank()) {
+					modelCombo.setSelectedItem(LlmProviderFactory.defaultModelFor(selectedProvider));
+				} else {
+					modelCombo.setSelectedItem(currentSelection.toString());
+				}
+			}
+		});
+
+		advancedToggle.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent event) {
+				boolean expanded = advancedToggle.isSelected();
+				advancedPanel.setVisible(expanded);
+				advancedToggle.setText(expanded ? "Advanced \u25BE" : "Advanced");
+				dialog.pack();
+				dialog.setLocationRelativeTo(sMainFrame);
+			}
+		});
+
+		JPanel topPanel = new JPanel(new BorderLayout(0, 5));
+		topPanel.add(formPanel, BorderLayout.NORTH);
+
+		JPanel advancedSection = new JPanel(new BorderLayout(0, 5));
+		advancedSection.add(advancedToggle, BorderLayout.NORTH);
+		advancedSection.add(advancedPanel, BorderLayout.CENTER);
+		topPanel.add(advancedSection, BorderLayout.SOUTH);
+
+		inputPanel.add(topPanel, BorderLayout.NORTH);
 
 		// Add a BDD Instructions text area with scroll
 		JLabel bddLabel = new JLabel("BDD Instructions:");
@@ -130,12 +194,15 @@ public class MCPAgentPanel {
 		JButton closeButton = new JButton("Save/Close");
 
 		Runnable saveFromUi = () -> {
+			settings.llmProviderName = (String) providerCombo.getSelectedItem();
 			settings.apiUrl = apiUrlField.getText().trim();
 			settings.apiKeyEnvVarName = apiKeyEnvVarField.getText().trim();
-			settings.openaiModel = openaiTextField.getText().trim();
+			Object selectedModel = modelCombo.getSelectedItem();
+			settings.openaiModel = selectedModel != null ? selectedModel.toString().trim() : "";
 			settings.vision = visionCheckBox.isSelected();
 			settings.reasoningLevel = (String) reasoningCombo.getSelectedItem();
 			settings.maxActions = (Integer) actionsSpinner.getValue();
+			settings.numRuns = (Integer) numRunsSpinner.getValue();
 			settings.bddScenarioName = bddScenarioNameField.getText().trim();
 			settings.bddInstructions = normalizeBddInstructions(bddInstructionsTextArea.getText());
 			bddInstructionsTextArea.setText(settings.bddInstructions);
@@ -154,48 +221,45 @@ public class MCPAgentPanel {
 				// Disable interaction with the dialog panel elements
 				setDialogBusy(dialog, true);
 
-				String apiKeyEnvVar = apiKeyEnvVarField.getText().trim();
-				String apiUrl = apiUrlField.getText().trim();
-				String openaiModel = openaiTextField.getText().trim();
-				boolean vision = visionCheckBox.isSelected();
-				String reasoningLevel = (String) reasoningCombo.getSelectedItem();
-				int maxActions = (Integer) actionsSpinner.getValue();
-				String bddScenarioName = bddScenarioNameField.getText().trim();
-				String bddInstructions = normalizeBddInstructions(bddInstructionsTextArea.getText());
-				bddInstructionsTextArea.setText(bddInstructions);
-
-				final LlmMcpAgent llmMcpAgent;
-				try {
-					llmMcpAgent = new LlmMcpAgent(
-							sMainFrame.getProject(),
-							apiUrl,
-							apiKeyEnvVar,
-							openaiModel,
-							vision,
-							reasoningLevel,
-							maxActions,
-							bddScenarioName,
-							bddInstructions
-					);
-				} catch (Exception ex) {
-					setDialogBusy(dialog, false);
-					java.util.logging.Logger.getLogger(MCPAgentPanel.class.getName()).log(
-							java.util.logging.Level.SEVERE,
-							"Failed to initialize TESTAR MCP agent",
-							ex
-					);
-					Notification.show(ex.getMessage());
-					return;
-				}
-
 				SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
 					@Override
 					protected String doInBackground() throws Exception {
-						return llmMcpAgent.runLLMAgent();
+						int totalRuns = (Integer) numRunsSpinner.getValue();
+						String lastResult = "";
+
+						for (int runIndex = 1; runIndex <= totalRuns; runIndex++) {
+							final int currentRun = runIndex;
+							SwingUtilities.invokeLater(() ->
+									launchButton.setText(totalRuns > 1
+											? "Launch " + currentRun + "/" + totalRuns
+											: "Launch"));
+
+							McpAgentSettings launchSettings = new McpAgentSettings();
+							launchSettings.llmProviderName = (String) providerCombo.getSelectedItem();
+							launchSettings.apiKeyEnvVarName = apiKeyEnvVarField.getText().trim();
+							launchSettings.apiUrl = apiUrlField.getText().trim();
+							Object selectedModel = modelCombo.getSelectedItem();
+							launchSettings.openaiModel = selectedModel != null ? selectedModel.toString().trim() : "";
+							launchSettings.vision = visionCheckBox.isSelected();
+							launchSettings.reasoningLevel = (String) reasoningCombo.getSelectedItem();
+							launchSettings.maxActions = (Integer) actionsSpinner.getValue();
+							launchSettings.numRuns = totalRuns;
+							launchSettings.bddScenarioName = bddScenarioNameField.getText().trim();
+							launchSettings.bddInstructions = normalizeBddInstructions(bddInstructionsTextArea.getText());
+
+							LlmMcpAgent llmMcpAgent = new LlmMcpAgent(
+									sMainFrame.getProject(),
+									launchSettings
+							);
+							lastResult = llmMcpAgent.runLLMAgent();
+						}
+
+						return lastResult;
 					}
 
 					@Override
 					protected void done() {
+						launchButton.setText("Launch");
 						setDialogBusy(dialog, false);
 						try {
 							String result = get();
@@ -320,6 +384,17 @@ public class MCPAgentPanel {
 					ex.getMessage()
 			);
 		}
+	}
+
+	private String[] getProviderModels(String providerName) {
+		String normalizedProvider = LlmProviderFactory.normalizeProviderName(providerName);
+		if (LlmProviderFactory.PROVIDER_GEMINI.equals(normalizedProvider)) {
+			return new String[] { "gemini-2.5-flash", "gemini-3.5-flash" };
+		}
+		if (LlmProviderFactory.PROVIDER_OLLAMA.equals(normalizedProvider)) {
+			return new String[] { "qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b", "llama3.1:8b", "llama3.2:3b", "ministral-3:3b", "ministral-3:8b" };
+		}
+		return new String[] { "gpt-5-mini", "gpt-5.4-mini", "gpt-5.4-nano" };
 	}
 
 }
