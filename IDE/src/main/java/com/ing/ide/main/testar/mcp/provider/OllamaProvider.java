@@ -70,7 +70,7 @@ public class OllamaProvider implements LlmProvider {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl))
                     .header("Content-Type", "application/json")
-                    .timeout(Duration.ofMinutes(10))
+                    .timeout(Duration.ofMinutes(3))
                     .POST(HttpRequest.BodyPublishers.ofString(requestJson))
                     .build();
 

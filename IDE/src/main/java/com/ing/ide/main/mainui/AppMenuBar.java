@@ -230,6 +230,7 @@ public class AppMenuBar extends JMenuBar {
 
         JMenuItem testarMenu = new JMenu("TESTAR Scriptless");
         testarMenu.add(Utils.createMenuItem("MCP Agent", sActionListener));
+        testarMenu.add(Utils.createMenuItem("MCP Results", sActionListener));
         tools.add(testarMenu);
 
         return tools;

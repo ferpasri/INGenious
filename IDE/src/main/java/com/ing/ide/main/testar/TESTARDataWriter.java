@@ -89,9 +89,13 @@ public class TESTARDataWriter {
         return trimmed.replaceAll("[\\\\/?:*\"|><]", "_");
     }
 
+    public String getRunName() {
+        return mainTestCase != null ? mainTestCase.getName() : "";
+    }
+
     private Scenario setResuableStepScenario() {
         // Prepare an INGenious low-level steps scenario to be a reusable component
-        String resuableStepDefinitionsScenarioName = sanitizeScenarioName(this.bddScenarioName);
+        String resuableStepDefinitionsScenarioName = sanitizeScenarioName(getRunName());
         if (resuableStepDefinitionsScenarioName.isEmpty()) {
             resuableStepDefinitionsScenarioName = "BDD-MCP-Reusable";
         }

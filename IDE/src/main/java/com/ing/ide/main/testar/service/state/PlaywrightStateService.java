@@ -32,7 +32,7 @@ public class PlaywrightStateService implements StateService {
     @Override
     public Feedback getStateInteractiveWidgets(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         List<String> widgetsContext = new ArrayList<>();
@@ -96,7 +96,7 @@ public class PlaywrightStateService implements StateService {
 
         } catch (PlaywrightException e) {
             addSevereLog("Failed to collect state interactive elements: " + e.getMessage());
-            return Feedback.issue("Trying to obtain state interactive elements information: " + e.getMessage());
+            return Feedback.issue(Feedback.Code.STATE_WIDGETS_COLLECTION_FAILED, "Trying to obtain state interactive elements information: " + e.getMessage());
         }
 
         return Feedback.validContext(String.join("\n", widgetsContext));
@@ -105,7 +105,7 @@ public class PlaywrightStateService implements StateService {
     @Override
     public Feedback getStateImage(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         try {
@@ -120,7 +120,7 @@ public class PlaywrightStateService implements StateService {
     @Override
     public Feedback getStateVisualText(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         List<String> widgetsContext = new ArrayList<>();
@@ -143,7 +143,7 @@ public class PlaywrightStateService implements StateService {
             }
         } catch (PlaywrightException e) {
             addSevereLog("Failed to collect visible text of state elements: " + e.getMessage());
-            return Feedback.issue("Trying to obtain visible text of state elements: " + e.getMessage());
+            return Feedback.issue(Feedback.Code.STATE_VISUAL_TEXT_COLLECTION_FAILED, "Trying to obtain visible text of state elements: " + e.getMessage());
         }
 
         return Feedback.validContext(String.join("\n", widgetsContext));

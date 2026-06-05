@@ -275,6 +275,9 @@ public class AppActionListener implements ActionListener {
             case "MCP Agent":
                 mcpAgentPanel.openEditor();
                 break;
+            case "MCP Results":
+                mcpAgentPanel.openMcpResultsDashboard();
+                break;
             case "Import SAP Recording":
                 {
                     handleSapImport(null); // All languages

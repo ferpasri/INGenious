@@ -57,7 +57,7 @@ public class OpenAiProvider implements LlmProvider {
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(120, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.MINUTES)
+                .readTimeout(3, TimeUnit.MINUTES)
                 .retryOnConnectionFailure(true)
                 .build();
     }

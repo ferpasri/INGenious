@@ -22,7 +22,7 @@ public class PlaywrightActionService implements ActionService {
     @Override
     public Feedback executeClickAction(SessionContext context, String bddStep, String rawCssSelector) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         addInfoLog("rawCssSelector: " + rawCssSelector);
@@ -31,7 +31,7 @@ public class PlaywrightActionService implements ActionService {
 
         if (cssSelector == null || cssSelector.trim().isEmpty()) {
             addSevereLog("ISSUE: Invalid CSS selector: " + rawCssSelector);
-            return Feedback.issue("Invalid CSS selector: " + rawCssSelector);
+            return Feedback.issue(Feedback.Code.CSS_SELECTOR_INVALID, "Invalid CSS selector: " + rawCssSelector);
         }
 
         try {
@@ -41,7 +41,7 @@ public class PlaywrightActionService implements ActionService {
 
             if (widget == null) {
                 addSevereLog("ISSUE: No matching element found for CSS selector: " + cssSelector);
-                return Feedback.issue("No matching element found for CSS selector: " + cssSelector);
+                return Feedback.issue(Feedback.Code.CSS_SELECTOR_NO_MATCH, "No matching element found for CSS selector: " + cssSelector);
             }
 
             PlaywrightClick clickAction = new PlaywrightClick(widget);
@@ -64,14 +64,14 @@ public class PlaywrightActionService implements ActionService {
             return Feedback.validContext(actionDescription);
         } catch (Exception e) {
             addSevereLog("Failed to execute action for selector: " + cssSelector + " - " + e.getMessage());
-            return Feedback.issue("Executing a click action: " + e.getMessage());
+            return Feedback.issue(Feedback.Code.CLICK_ACTION_EXECUTION_FAILED, "Executing a click action: " + e.getMessage());
         }
     }
 
     @Override
     public Feedback executeFillAction(SessionContext context, String bddStep, String rawCssSelector, String fillText) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         addInfoLog("rawCssSelector: " + rawCssSelector);
@@ -80,7 +80,7 @@ public class PlaywrightActionService implements ActionService {
 
         if (cssSelector == null || cssSelector.trim().isEmpty()) {
             addSevereLog("ISSUE: Invalid CSS selector: " + rawCssSelector);
-            return Feedback.issue("Invalid CSS selector: " + rawCssSelector);
+            return Feedback.issue(Feedback.Code.CSS_SELECTOR_INVALID, "Invalid CSS selector: " + rawCssSelector);
         }
 
         try {
@@ -90,7 +90,7 @@ public class PlaywrightActionService implements ActionService {
 
             if (widget == null) {
                 addSevereLog("ISSUE: No matching element found for CSS selector: " + cssSelector);
-                return Feedback.issue("No matching element found for CSS selector: " + cssSelector);
+                return Feedback.issue(Feedback.Code.CSS_SELECTOR_NO_MATCH, "No matching element found for CSS selector: " + cssSelector);
             }
 
             PlaywrightFill fillAction = new PlaywrightFill(widget, fillText);
@@ -113,14 +113,14 @@ public class PlaywrightActionService implements ActionService {
             return Feedback.validContext(actionDescription);
         } catch (Exception e) {
             addSevereLog("Failed to execute action for selector: " + cssSelector + " - " + e.getMessage());
-            return Feedback.issue("Executing a fill action: " + e.getMessage());
+            return Feedback.issue(Feedback.Code.FILL_ACTION_EXECUTION_FAILED, "Executing a fill action: " + e.getMessage());
         }
     }
 
     @Override
     public Feedback executeSelectAction(SessionContext context, String bddStep, String rawCssSelector, String optionValue) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         addInfoLog("rawCssSelector: " + rawCssSelector);
@@ -129,7 +129,7 @@ public class PlaywrightActionService implements ActionService {
 
         if (cssSelector == null || cssSelector.trim().isEmpty()) {
             addSevereLog("ISSUE: Invalid CSS selector: " + rawCssSelector);
-            return Feedback.issue("Invalid CSS selector: " + rawCssSelector);
+            return Feedback.issue(Feedback.Code.CSS_SELECTOR_INVALID, "Invalid CSS selector: " + rawCssSelector);
         }
 
         try {
@@ -139,7 +139,7 @@ public class PlaywrightActionService implements ActionService {
 
             if (widget == null) {
                 addSevereLog("ISSUE: No matching element found for CSS selector: " + cssSelector);
-                return Feedback.issue("No matching element found for CSS selector: " + cssSelector);
+                return Feedback.issue(Feedback.Code.CSS_SELECTOR_NO_MATCH, "No matching element found for CSS selector: " + cssSelector);
             }
 
             PlaywrightSelect selectAction = new PlaywrightSelect(widget, optionValue);
@@ -162,7 +162,7 @@ public class PlaywrightActionService implements ActionService {
             return Feedback.validContext(actionDescription);
         } catch (Exception e) {
             addSevereLog("Failed to execute select action for selector: " + cssSelector + " - " + e.getMessage());
-            return Feedback.issue("Executing a select action: " + e.getMessage());
+            return Feedback.issue(Feedback.Code.SELECT_ACTION_EXECUTION_FAILED, "Executing a select action: " + e.getMessage());
         }
     }
 

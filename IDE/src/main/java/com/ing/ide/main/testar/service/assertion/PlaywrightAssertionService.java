@@ -16,18 +16,18 @@ public class PlaywrightAssertionService implements AssertionService {
     @Override
     public Feedback addStepAssert(SessionContext context, String bddStep, String assertText) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         // Verify that the LLM assertText can be used as locator for assertion
         Locator locator = context.getState().getPage().locator("text=" + assertText);
         if (locator.count() == 0) {
-            return Feedback.issue("The provided assert text to be used as locator does not match with any GUI web element. " +
+            return Feedback.issue(Feedback.Code.ASSERT_TEXT_NOT_FOUND, "The provided assert text to be used as locator does not match with any GUI web element. " +
                     "Try again with a correct text locator.");
         } else if (locator.count() > 1) {
-            return Feedback.issue("The provided assert text locator is not unique because matches more than one GUI web element");
+            return Feedback.issue(Feedback.Code.ASSERT_TEXT_NOT_UNIQUE, "The provided assert text locator is not unique because matches more than one GUI web element");
         } else if (!locator.first().isVisible()) {
-            return Feedback.issue("The assert text locator is correct but the GUI web element is not visible. " +
+            return Feedback.issue(Feedback.Code.ASSERT_TEXT_NOT_VISIBLE, "The assert text locator is correct but the GUI web element is not visible. " +
                     "Try again with a correct text locator.");
         }
 

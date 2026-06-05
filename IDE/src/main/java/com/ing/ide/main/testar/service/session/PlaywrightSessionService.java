@@ -28,7 +28,7 @@ public class PlaywrightSessionService implements SessionService {
         } catch (Exception e) {
             addSevereLog("Failed to run PlaywrightSUT with URL: " + url);
             addSevereLog(e.getMessage());
-            return Feedback.issue("Loading the Web URL: " + e.getMessage());
+            return Feedback.issue(Feedback.Code.LOAD_URL_FAILED, "Loading the Web URL: " + e.getMessage());
         }
 
         // Add browser control test step into INGenious
@@ -40,12 +40,12 @@ public class PlaywrightSessionService implements SessionService {
     @Override
     public Feedback getCurrentURL(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         String url = context.getState().getPage().url();
         if (url == null || url.isEmpty()) {
-            return Feedback.issue("No web url available.");
+            return Feedback.issue(Feedback.Code.URL_NOT_AVAILABLE, "No web url available.");
         }
 
         return Feedback.validContext(url);
@@ -54,12 +54,12 @@ public class PlaywrightSessionService implements SessionService {
     @Override
     public Feedback navigateBack(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue("No web state-page initialized.");
+            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
         }
 
         Response response = context.getState().getPage().goBack();
         if (response == null) {
-            return Feedback.issue("Cannot navigate back - no previous page.");
+            return Feedback.issue(Feedback.Code.NAVIGATION_BACK_UNAVAILABLE, "Cannot navigate back - no previous page.");
         }
 
         // Add browser control test step into INGenious

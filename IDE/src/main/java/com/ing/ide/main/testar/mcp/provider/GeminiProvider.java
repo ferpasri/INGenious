@@ -81,6 +81,7 @@ public class GeminiProvider implements LlmProvider {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl + "?key=" + encodedKey))
                     .header("Content-Type", "application/json")
+                    .timeout(Duration.ofMinutes(3))
                     .POST(HttpRequest.BodyPublishers.ofString(requestJson))
                     .build();
 

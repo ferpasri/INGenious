@@ -27,11 +27,11 @@ public final class BddStepTracker {
         String normalizedBddStep = normalizeText(bddStep);
 
         if (normalizedBddStep.isEmpty()) {
-            return Feedback.issue("The provided BDD step is empty or invalid.");
+            return Feedback.issue(Feedback.Code.BDD_STEP_EMPTY_OR_INVALID, "The provided BDD step is empty or invalid.");
         }
 
         if (!isOriginalBddInstruction(normalizedBddStep)) {
-            return Feedback.issue("The provided BDD step does not seem to match with original BDD instructions.");
+            return Feedback.issue(Feedback.Code.BDD_STEP_NOT_IN_ORIGINAL_SCENARIO, "The provided BDD step does not seem to match with original BDD instructions.");
         }
 
         // If the step is not the latest and was already executed, the mapping is trying to be done with an old previous step
@@ -42,7 +42,7 @@ public final class BddStepTracker {
                     "Please refine the BDD step or just continue with other appropiated BDD steps.",
                     normalizedBddStep
             );
-            return Feedback.issue(message);
+            return Feedback.issue(Feedback.Code.BDD_STEP_STALE_REUSE, message);
         }
 
         return null;

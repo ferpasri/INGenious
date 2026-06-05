@@ -13,10 +13,13 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class MCPAgentPanel {
 
@@ -119,7 +122,7 @@ public class MCPAgentPanel {
 		formPanel.add(bddScenarioNameLabel);
 		formPanel.add(bddScenarioNameField);
 
-		JToggleButton advancedToggle = new JToggleButton("Advanced");
+		JToggleButton advancedToggle = new JToggleButton("Advanced \u25B8");
 		JPanel advancedPanel = new JPanel(new GridLayout(1, 2, 5, 5));
 		advancedPanel.setVisible(false);
 		JLabel numRunsLabel = new JLabel("Num Runs (batch):");
@@ -157,9 +160,16 @@ public class MCPAgentPanel {
 			@Override
 			public void actionPerformed(ActionEvent event) {
 				boolean expanded = advancedToggle.isSelected();
+				int advancedHeight = advancedPanel.getPreferredSize().height + 5;
+				Dimension currentSize = dialog.getSize();
 				advancedPanel.setVisible(expanded);
-				advancedToggle.setText(expanded ? "Advanced \u25BE" : "Advanced");
-				dialog.pack();
+				advancedToggle.setText(expanded ? "Advanced \u25BE" : "Advanced \u25B8");
+				dialog.setSize(
+						currentSize.width,
+						expanded ? currentSize.height + advancedHeight : Math.max(400, currentSize.height - advancedHeight)
+				);
+				inputPanel.revalidate();
+				inputPanel.repaint();
 				dialog.setLocationRelativeTo(sMainFrame);
 			}
 		});
@@ -181,6 +191,7 @@ public class MCPAgentPanel {
 		bddInstructionsTextArea.setLineWrap(true);
 		bddInstructionsTextArea.setWrapStyleWord(true);
 		JScrollPane bddScrollPane = new JScrollPane(bddInstructionsTextArea);
+		bddScrollPane.setPreferredSize(new Dimension(460, 220));
 
 		JPanel bddPanel = new JPanel(new BorderLayout());
 		bddPanel.add(bddLabel, BorderLayout.NORTH);
@@ -395,6 +406,39 @@ public class MCPAgentPanel {
 			return new String[] { "qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b", "llama3.1:8b", "llama3.2:3b", "ministral-3:3b", "ministral-3:8b" };
 		}
 		return new String[] { "gpt-5-mini", "gpt-5.4-mini", "gpt-5.4-nano" };
+	}
+
+	public void openMcpResultsDashboard() {
+		try {
+			if (sMainFrame.getProject() == null || sMainFrame.getProject().getLocation() == null) {
+				Notification.show("No active project available for MCP results.");
+				return;
+			}
+
+			File dashboardFile = Paths.get(
+					sMainFrame.getProject().getLocation(),
+					"Results",
+					"MCP",
+					"dashboard.html"
+			).toFile();
+
+			if (!dashboardFile.exists()) {
+				Notification.show("No MCP dashboard available yet. Execute at least one MCP run first.");
+				return;
+			}
+
+			if (!Desktop.isDesktopSupported()) {
+				Notification.show("Desktop integration is not supported in this environment.");
+				return;
+			}
+
+			Desktop.getDesktop().browse(dashboardFile.toURI());
+		} catch (Exception ex) {
+			Logger.getLogger(MCPAgentPanel.class.getName()).log(
+					Level.SEVERE, "Failed to open MCP results dashboard", ex
+			);
+			Notification.show("Failed to open MCP results dashboard.");
+		}
 	}
 
 }

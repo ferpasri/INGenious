@@ -34,6 +34,10 @@ public class PlaywrightMcpDriver implements McpInterface {
         this.assertionService = new PlaywrightAssertionService(persistenceService);
     }
 
+    public String getRunName() {
+        return context.getDataWriter().getRunName();
+    }
+
     @Override
     public Feedback loadWebURL(String bddStep, String url) {
         return sessionService.loadWebURL(context, bddStep, url);
