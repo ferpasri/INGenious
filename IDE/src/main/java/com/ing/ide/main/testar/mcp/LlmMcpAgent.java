@@ -1,218 +1,128 @@
 package com.ing.ide.main.testar.mcp;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ing.datalib.component.Project;
 import com.ing.ide.main.testar.mcp.helper.McpNames;
 import com.ing.ide.main.testar.mcp.helper.McpToolBuilder;
 import com.ing.ide.main.testar.mcp.helper.McpToolExecutor;
-import okhttp3.*;
+import com.ing.ide.main.testar.mcp.provider.LlmProvider;
+import com.ing.ide.main.testar.mcp.provider.LlmProviderException;
+import com.ing.ide.main.testar.mcp.provider.LlmProviderFactory;
+import com.ing.ide.main.testar.mcp.provider.LlmProviderResponse;
+import com.ing.ide.main.testar.mcp.provider.LlmToolCall;
 
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LlmMcpAgent {
 
-    private final OkHttpClient client;
+    private static final Logger LOGGER = Logger.getLogger(LlmMcpAgent.class.getName());
+
     private final ObjectMapper mapper = new ObjectMapper();
 
-    private final String openaiApiUrl;
-    private final String openaiApiKey;
-    private final String openaiModel;
-    private final boolean vision;
-    private final String reasoningLevel;
     private final int maxActions;
     private final String bddInstructions;
-
+    private final LlmProvider provider;
     private final McpInterface mcpInterface;
 
-    public LlmMcpAgent(Project project,
-                       String openaiApiUrl,
-                       String openaiApiKeyVariable,
-                       String openaiModel,
-                       boolean vision,
-                       String reasoningLevel,
-                       int maxActions,
-                       String bddScenarioName,
-                       String bddInstructions
-                      ) {
+    public LlmMcpAgent(Project project, McpAgentSettings settings) {
+        this.maxActions = settings.maxActions != null ? settings.maxActions : 10;
+        this.bddInstructions = settings.bddInstructions != null ? settings.bddInstructions : "";
 
-        this.openaiApiUrl = openaiApiUrl;
-        this.openaiApiKey = System.getenv(openaiApiKeyVariable);
-        if (openaiApiKey == null || openaiApiKey.isEmpty()) {
-            throw new IllegalStateException("Environment variable '" + openaiApiKeyVariable + "' is not set or is empty.");
-        }
-        this.openaiModel = openaiModel;
-        this.vision = vision;
-        this.reasoningLevel = reasoningLevel;
-        this.maxActions = maxActions;
-        this.bddInstructions = bddInstructions;
-
-        // Wrap the technical MCP driver with the BDD steps validator
-        PlaywrightMcpDriver mcpDriver = new PlaywrightMcpDriver(project, bddScenarioName);
+        PlaywrightMcpDriver mcpDriver = new PlaywrightMcpDriver(project, settings.bddScenarioName);
         this.mcpInterface = new BddMcpValidator(mcpDriver, new BddStepTracker(bddInstructions));
-
-        this.client = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(120, TimeUnit.SECONDS)
-                .readTimeout(20, TimeUnit.MINUTES)
-                .retryOnConnectionFailure(true)
-                .build();
+        this.provider = LlmProviderFactory.create(settings);
     }
 
     public String runLLMAgent() {
-        // Prepare the input and tools data to be sent to the LLM
         final List<Map<String, Object>> input = defineInput();
         final List<Map<String, Object>> tools = McpToolBuilder.from(McpInterface.class);
         final McpToolExecutor<McpInterface> executor = McpToolExecutor.of(McpInterface.class, mcpInterface, mapper);
 
+        provider.registerTools(tools);
+
         int step = 0;
-        boolean visionRequest = false; // this (sticky) flag indicates vision should be enabled
+        boolean visionRequest = false;
 
-        while (step < this.maxActions) {
-            Map<String, Object> body = new HashMap<>();
+        while (step < maxActions) {
+            try {
+                LlmProviderResponse response = provider.executePrompt(buildInstructions(), input, visionRequest);
+                logTokenUsage(provider.getLastTokenUsage());
 
-            // modes, tools, tool_choice, reasoning_effort first as they are 'static' content (reusing the KV cache)
-            body.put("model", openaiModel);
-            body.put("tools", tools);
-            body.put("tool_choice", "auto");
-            if (isReasoningModel(openaiModel)) {
-                body.put("reasoning", Map.of("effort", reasoningLevel));
-            }
+                if (!response.getAssistantItems().isEmpty()) {
+                    input.addAll(response.getAssistantItems());
+                }
 
-            // Put instructions and input last as this is the variable content.
-            body.put("instructions", buildInstructions());
-            body.put("input", input);
+                List<LlmToolCall> toolCalls = response.getToolCalls();
+                if (toolCalls == null || toolCalls.isEmpty()) {
+                    String feedback = "ISSUE: No tool was selected. Please review the last results.";
+                    addInfoLog(feedback);
+                    if (!response.getOutputText().isBlank()) {
+                        addInfoLog("MODEL OUTPUT: " + response.getOutputText());
+                    }
+                    input.add(createUserTextInput("Reminder: choose a valid tool to proceed."));
+                    continue;
+                }
 
-            try (Response response = client.newCall(
-                    new Request.Builder()
-                            .url(openaiApiUrl)
-                            .header("Authorization", "Bearer " + openaiApiKey)
-                            .header("Content-Type", "application/json")
-                            .header("Copilot-Vision-Request", "" + visionRequest)
-                            .post(RequestBody.create(MediaType.parse("application/json"), mapper.writeValueAsString(body)))
-                            .build()
-            ).execute()) {
+                List<Map<String, Object>> toolCallResultItems = new ArrayList<>();
+                List<Map<String, Object>> userInputItems = new ArrayList<>();
 
-                if (!response.isSuccessful()) {
-                    if (response.code() == 429) {
-                        String retryAfter = response.header("Retry-After");
-                        long waitTime = 10000L; // default 10 seconds
+                for (LlmToolCall toolCall : toolCalls) {
+                    String toolName = toolCall.getToolName();
+                    String argumentsJson = toolCall.getArgumentsJson();
+                    String callId = toolCall.getCallId();
 
-                        if (retryAfter != null) {
-                            try {
-                                waitTime = Long.parseLong(retryAfter) * 1333L; // conversion with 33% margin
-                            } catch (NumberFormatException e) {
-                                addSevereLog("Invalid Retry-After header value: " + retryAfter);
-                            }
-                        }
+                    addInfoLog("DEBUG toolName: " + toolName);
+                    addInfoLog("DEBUG argumentsJson: " + argumentsJson);
 
-                        addInfoLog("OpenAI rate limited (429)... wait " + (waitTime / 1000) + " seconds...");
-                        Thread.sleep(waitTime);
+                    Object resultObj = executor.execute(toolName, argumentsJson);
+                    String result = resultObj == null ? "null" : resultObj.toString();
+
+                    if (McpNames.of(McpInterface::stopTestExecution).equals(toolName)) {
+                        addInfoLog("LLM agent decided to stop the test execution");
+                        return "LLM agent decided to stop the test execution";
+                    }
+
+                    boolean requireStateImage = McpNames.of(McpInterface::getStateImage).equals(toolName);
+                    String toolContent = requireStateImage ? "screenshot_ready" : result;
+                    toolCallResultItems.add(Map.of(
+                            "type", "function_call_output",
+                            "call_id", callId,
+                            "output", toolContent
+                    ));
+
+                    if (requireStateImage && !result.isEmpty() && provider.supportsVision()) {
+                        addInfoLog("VISION REQUEST: attaching state image");
+                        attachStateImage(userInputItems, result);
+                        visionRequest = true;
+                    } else if (requireStateImage && !result.isEmpty()) {
+                        addInfoLog("VISION REQUEST: is omitted for this model or by the user");
+                        userInputItems.add(createUserTextInput("Screenshot captured (omitted for this model)."));
                     } else {
-                        String failed = "Stop execution due to OpenAI call fail: " + response.code();
-                        addSevereLog(failed);
-                        try {
-                            String request_body = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(body);
-                            addSevereLog("request headers: " + response.request().headers().toString());
-                            addSevereLog("request body: " + request_body);
-                            addSevereLog("response: " + response.body().string());
-
-                            return failed;
-                        } catch (JsonProcessingException e) {
-                            addSevereLog("JSON processing failed" + e.getMessage());
-                        }
+                        addInfoLog("DEBUG result: " + result);
                     }
-                } else {
-                    List<Map<String, Object>> toolCallResultItems = new ArrayList<>();
-                    List<Map<String, Object>> userInputItems = new ArrayList<>();
-
-                    // if response is successful
-                    String json = Objects.requireNonNull(response.body()).string();
-
-                    Map<?, ?> parsed = mapper.readValue(json, Map.class);
-                    logTokenUsage((Map<?, ?>) parsed.get("usage"));
-                    List<Map<String, Object>> outputItems = castListOfMaps(parsed.get("output"));
-
-                    if (outputItems != null && !outputItems.isEmpty()) {
-                        input.addAll(outputItems);
-                    }
-
-                    List<Map<String, Object>> toolCalls = findFunctionCalls(outputItems);
-
-                    // Empty toolCalls response. Don't stop, give the LLM another chance
-                    if (toolCalls == null || toolCalls.isEmpty()) {
-                        String feedback = "ISSUE: No tool was selected. Please review the last results.";
-                        addInfoLog(feedback);
-                        String outputText = asText(parsed.get("output_text"));
-                        if (!outputText.isEmpty()) {
-                            addInfoLog("MODEL OUTPUT: " + outputText);
-                        }
-                        userInputItems.add(createUserTextInput("Reminder: choose a valid tool to proceed."));
-                        input.addAll(userInputItems);
-                        continue;
-                    }
-
-                    // Execute all tool calls
-                    for (Map<String, Object> toolCall : toolCalls) {
-                        String callId = asText(toolCall.get("call_id"));
-                        String toolName = asText(toolCall.get("name"));
-                        String argumentsJson = asText(toolCall.get("arguments"));
-
-                        addInfoLog("DEBUG toolName: " + toolName);
-                        addInfoLog("DEBUG argumentsJson: " + argumentsJson);
-
-                        Object resultObj = executor.execute(toolName, argumentsJson);
-                        String result = (resultObj == null) ? "null" : resultObj.toString();
-
-                        // Check if stop the execution due to the LLM decision
-                        if (McpNames.of(McpInterface::stopTestExecution).equals(toolName)) {
-                            addInfoLog("LLM agent decided to stop the test execution");
-                            return "LLM agent decided to stop the test execution";
-                        }
-
-                        // Reply to this tool call first
-                        boolean requireStateImage = McpNames.of(McpInterface::getStateImage).equals(toolName);
-                        String toolContent = requireStateImage ? "screenshot_ready" : result;
-                        toolCallResultItems.add(Map.of(
-                                "type", "function_call_output",
-                                "call_id", callId,
-                                "output", toolContent
-                        ));
-
-                        // If required, additionally add the image user message
-                        if (requireStateImage && !result.isEmpty() && supportsVision(openaiModel)) {
-                            addInfoLog("VISION REQUEST: attaching state image");
-                            attachStateImage(userInputItems, result);
-                            visionRequest = true;
-                        } else if (requireStateImage && !result.isEmpty()) {
-                            addInfoLog("VISION REQUEST: is omitted for this model or by the user");
-                            userInputItems.add(createUserTextInput("Screenshot captured (omitted for this model)."));
-                            // add vision request for the next iteration
-                        } else {
-                            // This is only for debugging purposes
-                            addInfoLog("DEBUG result: " + result);
-                        }
-                    }
-
-                    // Tool results first.
-                    input.addAll(toolCallResultItems);
-                    // User messages second.
-                    input.addAll(userInputItems);
-
-                    // step if there are no exceptions
-                    step++;
-                }
-            } catch (Exception e) {
-                try {
-                    String request = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(body);
-                    addSevereLog("LLM step failed: " + e.getMessage());
-                    addSevereLog("request: " + request);
-                    e.printStackTrace();
-                } catch (JsonProcessingException ex) {
-                    addSevereLog("JSON processing failed" + ex.getMessage());
                 }
 
+                input.addAll(toolCallResultItems);
+                input.addAll(userInputItems);
+                step++;
+            } catch (LlmProviderException exception) {
+                if (exception.isRetryable()) {
+                    long waitTime = exception.getRetryAfterMillis() > 0 ? exception.getRetryAfterMillis() : 10000L;
+                    addInfoLog("LLM provider rate limited... wait " + (waitTime / 1000) + " seconds...");
+                    sleep(waitTime);
+                    continue;
+                }
+
+                addSevereLog("LLM step failed: " + exception.getMessage());
+                return "Stop execution due to LLM call fail: " + exception.getMessage();
+            } catch (Exception exception) {
+                addSevereLog("LLM step failed: " + exception.getMessage());
+                LOGGER.log(Level.SEVERE, "TESTAR MCP step failed", exception);
             }
         }
 
@@ -222,34 +132,24 @@ public class LlmMcpAgent {
     }
 
     private String buildInstructions() {
-        return "You are a BDD-GUI test agent. " +
-                "Your goal is to complete the BDD instructions. " +
-                "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeFillAction, and executeSelectAction functions. " +
-                "Use getCurrentURL and checkExecutedActions functions if you need assistance. " +
-                "Use navigateBack function if you need to control the web browser. " +
-                "After completing each BDD step (Given, When, Then), use (getStateImage or getStateVisualText) and addStepAssert functions to validate that step. " +
-                "When asserting all BDD instructions, use the stopTestExecution function.";
+        return "You are a BDD-GUI test agent. "
+                + "Your goal is to complete the BDD instructions. "
+                + "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeFillAction, and executeSelectAction functions. "
+                + "Use getCurrentURL and checkExecutedActions functions if you need assistance. "
+                + "Use navigateBack function if you need to control the web browser. "
+                + "After completing each BDD step (Given, When, Then), use getStateImage or getStateVisualText and addStepAssert functions to validate that step. "
+                + "When asserting all BDD instructions, use the stopTestExecution function. "
+                + "Choose exactly one tool invocation at a time. "
+                + "If your provider requires text-only tool selection, return a single JSON object with this shape: "
+                + "{\"thought\":\"...\",\"action\":{\"toolName\":\"...\",\"parameters\":{...}}}.";
     }
 
     private List<Map<String, Object>> defineInput() {
         List<Map<String, Object>> input = new ArrayList<>();
-
         input.add(createUserTextInput("Begin by load the web url to be tested."));
         input.add(createUserTextInput("Get the current GUI state to obtain the available web elements."));
-        input.add(createUserTextInput(this.bddInstructions));
-
+        input.add(createUserTextInput(bddInstructions));
         return input;
-    }
-
-    private boolean supportsVision(String model) {
-        String m = model == null ? "" : model.toLowerCase();
-        return vision && (m.contains("gpt-4o") || m.contains("gpt-4.1") || m.contains("gpt-5"));
-    }
-
-    private boolean isReasoningModel(String model) {
-        if (model == null) return false;
-        String m = model.toLowerCase();
-        return m.startsWith("gpt-5");
     }
 
     private Map<String, Object> createUserTextInput(String text) {
@@ -279,66 +179,29 @@ public class LlmMcpAgent {
         inputItems.add(input);
     }
 
-    @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> castListOfMaps(Object value) {
-        if (!(value instanceof List<?>)) {
-            return Collections.emptyList();
-        }
-        return (List<Map<String, Object>>) value;
-    }
-
-    private List<Map<String, Object>> findFunctionCalls(List<Map<String, Object>> outputItems) {
-        List<Map<String, Object>> toolCalls = new ArrayList<>();
-        if (outputItems == null) {
-            return toolCalls;
-        }
-
-        for (Map<String, Object> item : outputItems) {
-            if ("function_call".equals(asText(item.get("type")))) {
-                toolCalls.add(item);
-            }
-        }
-        return toolCalls;
-    }
-
-    private String asText(Object value) {
-        return value == null ? "" : String.valueOf(value);
-    }
-
     private void addInfoLog(String msg) {
-        java.util.logging.Logger.getLogger(LlmMcpAgent.class.getName()).log(
-                java.util.logging.Level.INFO,
-                msg
-        );
+        LOGGER.log(Level.INFO, msg);
     }
 
     private void addSevereLog(String msg) {
-        java.util.logging.Logger.getLogger(LlmMcpAgent.class.getName()).log(
-                java.util.logging.Level.SEVERE,
-                msg
-        );
+        LOGGER.log(Level.SEVERE, msg);
     }
 
-    private Number asNumber(Object v) {
-        return v instanceof Number ? (Number) v : null;
-    }
-
-    private void logTokenUsage(Map<?, ?> usage) {
-        if (usage == null || usage.isEmpty()) {
-            addInfoLog("DEBUG tokens step: usage not provided by API");
+    private void logTokenUsage(int totalTokens) {
+        if (totalTokens <= 0) {
+            addInfoLog("DEBUG tokens step: usage not provided by provider");
             return;
         }
 
-        // Prompt tokens are the tokens that you input into the model (instructions + history + tool specs).
-        Number promptTokens = asNumber(usage.get("prompt_tokens"));
-        // Completion tokens are any tokens that the model generates in response to your input.
-        Number completionTokens = asNumber(usage.get("completion_tokens"));
-        // Sum of prompt + completion (plus any extra accounting fields the API might add). Use it to measure the cost per call.
-        Number totalTokens = asNumber(usage.get("total_tokens"));
+        addInfoLog("DEBUG tokens step: totalTokens=" + totalTokens);
+    }
 
-        addInfoLog("DEBUG tokens step: promptTokens=" + promptTokens +
-                ", completionTokens=" + completionTokens +
-                ", totalTokens=" + totalTokens);
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
     }
 
 }
