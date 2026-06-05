@@ -81,7 +81,10 @@ public final class TestarBddGoalLoader {
 
         Path root = findBddGoalsRoot(Path.of(System.getProperty("user.dir")));
         if (root == null) {
-            throw new IllegalArgumentException("Unable to locate '.agents/bdd_goals' from the current working directory.");
+            throw new IllegalArgumentException(
+                    "Unable to locate '.agents/bdd_goals' in the current runtime root. "
+                            + "Package '.agents/bdd_goals' into the release or run from a workspace root that contains it."
+            );
         }
 
         return root.resolve(normalizedGoalId).normalize();
@@ -96,14 +99,20 @@ public final class TestarBddGoalLoader {
     }
 
     private static Path findBddGoalsRoot(Path start) {
-        Path current = start;
-        while (current != null) {
-            Path candidate = current.resolve(".agents").resolve("bdd_goals");
-            if (Files.isDirectory(candidate)) {
-                return candidate;
-            }
-            current = current.getParent();
+        Path normalizedStart = start.normalize();
+        Path candidate = normalizedStart.resolve(".agents").resolve("bdd_goals");
+        if (Files.isDirectory(candidate)) {
+            return candidate;
         }
+
+        Path parent = normalizedStart.getParent();
+        if (parent != null) {
+            Path parentCandidate = parent.resolve(".agents").resolve("bdd_goals");
+            if (Files.isDirectory(parentCandidate)) {
+                return parentCandidate;
+            }
+        }
+
         return null;
     }
 

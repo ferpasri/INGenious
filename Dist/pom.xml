@@ -103,6 +103,11 @@
                             <includeEmptyDirs>true</includeEmptyDirs>
                             <resources>
                                 <resource>
+                                    <directory>${project.parent.basedir}/.agents</directory>
+                                    <filtering>false</filtering>
+                                    <targetPath>.agents</targetPath>
+                                </resource>
+                                <resource>
                                     <directory>${resourceDir}</directory>
                                     <filtering>true</filtering>
                                     <includes>

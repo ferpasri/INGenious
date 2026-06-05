@@ -7,12 +7,11 @@ description: "Use when operating the INGenious TESTAR packaged CLI to create scr
 
 Use this skill for the INGenious packaged TESTAR CLI integration.
 
-Treat this repository as an operational environment when using the packaged CLI, not as a source-code workspace.
+Assume the agent is already running from the packaged runtime root.
 
-Treat the packaged runtime as the execution root:
+Use these runtime-local paths:
 
-- preferred package root: `Dist/release`
-- preferred CLI launcher: `Dist/release/ingenious-cli.bat`
+- preferred CLI launcher: `ingenious-cli.bat`
 - preferred BDD goal root: `.agents/bdd_goals`
 
 ## When to use
@@ -25,16 +24,19 @@ Treat the packaged runtime as the execution root:
 
 Use the packaged Windows launcher:
 
-- `Dist\release\ingenious-cli.bat`
+- `ingenious-cli.bat`
 
 The TESTAR CLI auto-starts a local daemon on first use. The daemon keeps the active TESTAR session alive across separate CLI commands.
 
 ## Project path rules
 
-- Work from `Dist\release`.
-- Pass projects relative to `Dist\release`, for example:
+- Pass projects relative to the packaged runtime root, for example:
   - `Projects\Parabank`
 - Prefer explicit `-p` project paths for `testar session start`.
+- Do not silently reuse existing projects like `Projects\Tutorial` for a different application goal.
+- If the intended project does not exist, create it explicitly before starting the TESTAR session.
+- Preferred project creation command:
+  - `ingenious-cli.bat project create Parabank -d Projects`
 
 ## BDD goal files
 
@@ -58,7 +60,7 @@ The TESTAR CLI auto-starts a local daemon on first use. The daemon keeps the act
 
 Required arguments:
 
-- `<projectPath>`: INGenious project path relative to `Dist\release`
+- `<projectPath>`: INGenious project path relative to the packaged runtime root
 - `<url>`: target web URL
 - prefer `<application/scenario_id>` or `<scenarioFilePath>` so the daemon loads the full original BDD scenario
 - `<scenarioName>` is only the fallback scenario title when no BDD goal file is provided
@@ -123,7 +125,7 @@ Use the selector exactly as exposed by the latest widget state when possible.
 - Use `testar action history` to confirm what has already been executed in the active daemon session.
 - `testar action history` is BDD-aware in the CLI path and shows which recorded actions belong to which `bddStep`.
 - Prefer grounding assertions in `state text` output before creating them.
-- `testar state image` now writes a PNG file under `Dist\release\tmp\testar\<sessionId>\...` and returns `imagePath`.
+- `testar state image` now writes a PNG file under `tmp\testar\<sessionId>\...` and returns `imagePath`.
 
 ## Resilience and retry behavior rules
 
@@ -157,24 +159,26 @@ When `testar state widgets`, `testar state text`, or `testar state image` fails,
 
 Generated artifacts are written into the active INGenious project inside the packaged runtime, for example:
 
-- `Dist\release\Projects\Tutorial\TestPlan\BDD-MCP_scenario`
+- `Projects\<project_name>\TestPlan\BDD-MCP_scenario`
 
 Reusable components and supporting generated data are also persisted through the INGenious TESTAR services.
 
 ## Workflow
 
-1. Work from `Dist\release`.
-2. Create or choose a project first, for example `Projects\Parabank`.
-3. Start one TESTAR session with `testar session start`.
-4. Inspect the live UI with:
+1. Create or choose a project first, for example `Projects\Parabank`.
+2. If the project does not exist, create it explicitly with:
+   - `ingenious-cli.bat project create Parabank -d Projects`
+3. Load the BDD goal from `.agents\bdd_goals\...`.
+4. Start one TESTAR session with `testar session start`.
+5. Inspect the live UI with:
    - `testar state widgets`
    - `testar state text`
    - `testar state image`
-5. Execute one action at a time.
-6. Re-check state after each action.
-7. Add assertions only after the target state is visible.
-8. Stop the session with `testar session stop`.
-9. Verify generated artifacts in the target INGenious project.
+6. Execute one action at a time.
+7. Re-check state after each action.
+8. Add assertions only after the target state is visible.
+9. Stop the session with `testar session stop`.
+10. Verify generated artifacts in the target INGenious project.
 
 ## Session example
 
