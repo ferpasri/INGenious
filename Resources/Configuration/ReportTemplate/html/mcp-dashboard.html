@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>MCP Benchmark Dashboard - INGenious</title>
+
+  <!-- Dashboard-specific styling for the MCP benchmark report -->
+  <link rel="stylesheet" href="media/css/mcp-dashboard.css">
+
+  <!-- Structured metrics payload written by the Java writer -->
+  <script src="mcp_metrics.js"></script>
+</head>
+<body>
+
+  <!--
+    Dashboard shell.
+    The Java writer copies this template into Results/MCP and the JS renderer
+    mounts the benchmark UI inside this root element.
+  -->
+  <div id="app"></div>
+
+  <!-- Dashboard behavior and rendering logic -->
+  <script src="media/js/mcp-dashboard.js"></script>
+</body>
+</html>

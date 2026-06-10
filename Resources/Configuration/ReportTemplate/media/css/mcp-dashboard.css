@@ -1,0 +1,389 @@
+/* Global reset and page background */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f4f6f9;
+    color: #18212b;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+h1,
+h2,
+h3 {
+    margin: 0;
+}
+
+/* Main layout wrapper for the dashboard content */
+.page {
+    max-width: 1360px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* Top banner showing dashboard identity and run count */
+.hero {
+    padding: 20px 24px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #102f52, #1d5d94);
+    border-bottom: 3px solid #2f7fc8;
+}
+
+.hero-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.hero-subtitle {
+    margin-top: 4px;
+    color: #d5e6f8;
+    font-size: 13px;
+}
+
+.hero-badge {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #dcecff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* KPI card grid for the selected model group */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px;
+    margin: 18px 0 22px 0;
+}
+
+.card {
+    padding: 14px 16px;
+    border: 1px solid #d7deea;
+    border-top: 3px solid #2f7fc8;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 6px 16px rgba(17, 37, 62, 0.06);
+}
+
+.card.ok {
+    border-top-color: #27844a;
+}
+
+.card.warn {
+    border-top-color: #d38b18;
+}
+
+.card.bad {
+    border-top-color: #b53c45;
+}
+
+.card.neutral {
+    border-top-color: #5c6c80;
+}
+
+.card .label {
+    color: #6b7890;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.card .value {
+    margin-top: 6px;
+    color: #172331;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.card .desc {
+    margin-top: 6px;
+    color: #7d8b9f;
+    font-size: 11px;
+}
+
+/* Generic white panel used for each dashboard section */
+.section {
+    margin-bottom: 18px;
+    border: 1px solid #d7deea;
+    border-radius: 8px;
+    background: #ffffff;
+    box-shadow: 0 6px 16px rgba(17, 37, 62, 0.06);
+    overflow: hidden;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid #d7deea;
+    background: #f7f9fc;
+}
+
+.section-title {
+    color: #172331;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.section-meta {
+    color: #7d8b9f;
+    font-size: 11px;
+}
+
+.section-body {
+    padding: 18px;
+}
+
+/* Inner boxed elements used for charts and invalid-action breakdowns */
+.chart-list {
+    display: grid;
+    gap: 12px;
+}
+
+.chart-box {
+    padding: 12px;
+    border: 1px solid #e1e7f0;
+    border-radius: 8px;
+    background: #f8fafd;
+}
+
+.chart-box h3 {
+    margin-bottom: 8px;
+    color: #314258;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Two-column layout: selectable model groups on the left, details on the right */
+.model-group-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 18px;
+}
+
+.model-group-list {
+    display: grid;
+    gap: 10px;
+}
+
+.model-group-item {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 12px;
+    border: 1px solid #d8e1ee;
+    border-radius: 8px;
+    background: #f8fafd;
+}
+
+.model-group-item.selected {
+    border-color: #7bb1ea;
+    background: #eef5fd;
+    box-shadow: inset 0 0 0 1px #7bb1ea;
+}
+
+.model-group-checkbox {
+    margin-top: 2px;
+}
+
+.model-group-button {
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.model-group-name {
+    color: #1c2b3d;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.model-group-meta {
+    margin-top: 4px;
+    color: #6f7f90;
+    font-size: 11px;
+}
+
+/* Selected model-group summary header above the run list */
+.selected-group-header {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5ebf2;
+}
+
+.selected-group-title {
+    color: #1c2b3d;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.selected-group-meta {
+    margin-top: 6px;
+    color: #6f7f90;
+    font-size: 12px;
+}
+
+/* Side-by-side invalid-action detail panels */
+.selected-group-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+/* Horizontal comparison bars used in benchmark comparisons */
+.bar-row {
+    margin: 10px 0;
+}
+
+.bar-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+    color: #324055;
+    font-size: 12px;
+}
+
+.bar-track {
+    height: 10px;
+    border-radius: 999px;
+    background: #dfe6ef;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #226ec2, #53a7ff);
+}
+
+.bar-fill.warn {
+    background: linear-gradient(90deg, #d18a18, #f3be58);
+}
+
+.bar-fill.bad {
+    background: linear-gradient(90deg, #ae3943, #ef7b84);
+}
+
+/* Generic table styling for run detail rows */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 9px 8px;
+    border-bottom: 1px solid #e5ebf2;
+    text-align: left;
+    vertical-align: top;
+    font-size: 13px;
+}
+
+th {
+    color: #55667d;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+tbody tr:hover td {
+    background: #fafcff;
+}
+
+/* Status and metadata badges */
+.pill {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.ok {
+    background: #daf3e3;
+    color: #1d7d47;
+}
+
+.bad {
+    background: #fbe3e5;
+    color: #b52f3d;
+}
+
+.tag {
+    display: inline-block;
+    padding: 3px 7px;
+    border-radius: 4px;
+    background: #e8edf6;
+    color: #314258;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* Utility text styles for machine-like values and muted text */
+.mono {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+}
+
+.small {
+    color: #6f7f90;
+    font-size: 12px;
+}
+
+/* Tiny latency spark bars inside the run table */
+.latency-mini {
+    display: inline-flex;
+    align-items: end;
+    gap: 1px;
+    height: 16px;
+}
+
+.latency-mini span {
+    display: inline-block;
+    width: 3px;
+    border-radius: 1px 1px 0 0;
+    background: #2c5f9e;
+}
+
+/* Empty-state message when a section has no selectable content */
+.empty {
+    padding: 12px 0;
+    color: #8593a8;
+    font-size: 13px;
+}
+
+/* Collapse two-column layouts into one column on smaller screens */
+@media (max-width: 1080px) {
+    .model-group-layout,
+    .selected-group-panels {
+        grid-template-columns: 1fr;
+    }
+}
