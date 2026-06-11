@@ -38,62 +38,13 @@ public class PlaywrightStateService implements StateService {
         List<String> widgetsContext = new ArrayList<>();
 
         try {
-            context.setState(new PlaywrightState(context.getSystem()));
+            // Get and persist the interactive widgets data
+            List<PlaywrightWidget> stateWidgets = getAndPersistInteractiveWidgets(context);
 
-            List<PlaywrightWidget> stateWidgets = context.getState().getInteractiveWidgets();
-
+            // Use the interactive widgets data to return state context
             for (PlaywrightWidget widget : stateWidgets) {
-
-                // For widgets with CSS locators
-                if (!widget.get(PlaywrightTags.WebLocatorCSS, "").isEmpty()
-                        && !isExternalLink(context.getState(), widget.get(PlaywrightTags.WebHref, ""))) {
-
-                    // Prepare the web widget context to be sent to the AI agent
-                    Map<String, String> widgetInfo = new LinkedHashMap<>();
-
-                    widgetInfo.put("isModal", String.valueOf(widget.get(PlaywrightTags.WebIsModal, false)));
-
-                    widgetInfo.put("css", widget.get(PlaywrightTags.WebLocatorCSS));
-                    widgetInfo.put("role", widget.get(PlaywrightTags.WebTagName));
-
-                    widgetInfo.put("placeholder", widget.get(PlaywrightTags.WebLocatorPlaceholder));
-                    widgetInfo.put("label", widget.get(PlaywrightTags.WebLocatorLabel));
-                    widgetInfo.put("alttext", widget.get(PlaywrightTags.WebLocatorAltText));
-
-                    // For select elements list the available options
-                    if ("select".equalsIgnoreCase(widget.get(PlaywrightTags.WebTagName, ""))) {
-                        List<ElementHandle> options = widget.getElementHandle().querySelectorAll("option");
-                        List<String> optionValues = new ArrayList<>();
-
-                        for (ElementHandle option : options) {
-                            String value = option.getAttribute("value");
-                            optionValues.add(value != null ? value : "");
-                        }
-
-                        if (!optionValues.isEmpty()) {
-                            widgetInfo.put("options", String.join(", ", optionValues));
-                        }
-                    }
-                    // Otherwise, add the text content
-                    else {
-                        widgetInfo.put("text", widget.get(PlaywrightTags.WebLocatorText).replaceAll("\\s+", " ").trim());
-                    }
-
-                    // Then serialize each widget as JSON or custom line format:
-                    widgetsContext.add(widgetInfo.entrySet().stream()
-                            .map(e -> e.getKey() + ": " + e.getValue())
-                            .collect(Collectors.joining(" | "))
-                    );
-
-                    // Save them in the INGenious object repository
-                    try {
-                        persistenceService.persistWidgetObject(widget, context.getState().getPage());
-                    } catch (Exception e) {
-                        addSevereLog("Failed add action objects to the OR" + e.getMessage());
-                    }
-                }
+                widgetsContext.add(serializeInteractiveWidget(widget));
             }
-
         } catch (PlaywrightException e) {
             addSevereLog("Failed to collect state interactive elements: " + e.getMessage());
             return Feedback.issue(Feedback.Code.STATE_WIDGETS_COLLECTION_FAILED, "Trying to obtain state interactive elements information: " + e.getMessage());
@@ -126,8 +77,10 @@ public class PlaywrightStateService implements StateService {
         List<String> widgetsContext = new ArrayList<>();
 
         try {
-            context.setState(new PlaywrightState(context.getSystem()));
+            // Always persist the interactive widgets data
+            getAndPersistInteractiveWidgets(context);
 
+            // Even if we only want to return textual state context
             List<PlaywrightWidget> stateWidgets = context.getState().getVisibleWidgetsWithText();
 
             for (PlaywrightWidget widget : stateWidgets) {
@@ -147,6 +100,71 @@ public class PlaywrightStateService implements StateService {
         }
 
         return Feedback.validContext(String.join("\n", widgetsContext));
+    }
+
+    private List<PlaywrightWidget> getAndPersistInteractiveWidgets(SessionContext context) {
+        context.setState(new PlaywrightState(context.getSystem()));
+
+        List<PlaywrightWidget> persistedWidgets = new ArrayList<>();
+        List<PlaywrightWidget> stateWidgets = context.getState().getInteractiveWidgets();
+
+        for (PlaywrightWidget widget : stateWidgets) {
+            if (!shouldPersistWidget(context.getState(), widget)) {
+                continue;
+            }
+
+            persistedWidgets.add(widget);
+
+            try {
+                persistenceService.persistWidgetObject(widget, context.getState().getPage());
+            } catch (Exception exception) {
+                addSevereLog("Failed to add action objects to the OR: " + exception.getMessage());
+            }
+        }
+
+        return persistedWidgets;
+    }
+
+    private boolean shouldPersistWidget(PlaywrightState state, PlaywrightWidget widget) {
+        // Only widgets with CSS locators in the current web domain
+        return !widget.get(PlaywrightTags.WebLocatorCSS, "").isEmpty()
+                && !isExternalLink(state, widget.get(PlaywrightTags.WebHref, ""));
+    }
+
+    private String serializeInteractiveWidget(PlaywrightWidget widget) {
+        // Prepare the web widget context to be sent to the AI agent
+        Map<String, String> widgetInfo = new LinkedHashMap<>();
+
+        widgetInfo.put("isModal", String.valueOf(widget.get(PlaywrightTags.WebIsModal, false)));
+        widgetInfo.put("css", widget.get(PlaywrightTags.WebLocatorCSS));
+        widgetInfo.put("role", widget.get(PlaywrightTags.WebTagName));
+        widgetInfo.put("placeholder", widget.get(PlaywrightTags.WebLocatorPlaceholder));
+        widgetInfo.put("label", widget.get(PlaywrightTags.WebLocatorLabel));
+        widgetInfo.put("alttext", widget.get(PlaywrightTags.WebLocatorAltText));
+
+        // For select elements list the available options
+        if ("select".equalsIgnoreCase(widget.get(PlaywrightTags.WebTagName, ""))) {
+            List<ElementHandle> options = widget.getElementHandle().querySelectorAll("option");
+            List<String> optionValues = new ArrayList<>();
+
+            for (ElementHandle option : options) {
+                String value = option.getAttribute("value");
+                optionValues.add(value != null ? value : "");
+            }
+
+            if (!optionValues.isEmpty()) {
+                widgetInfo.put("options", String.join(", ", optionValues));
+            }
+        } 
+        // Otherwise, add the text content
+        else {
+            widgetInfo.put("text", widget.get(PlaywrightTags.WebLocatorText).replaceAll("\\s+", " ").trim());
+        }
+
+        // Then serialize each widget as JSON or custom line format:
+        return widgetInfo.entrySet().stream()
+                .map(entry -> entry.getKey() + ": " + entry.getValue())
+                .collect(Collectors.joining(" | "));
     }
 
     private boolean isExternalLink(PlaywrightState state, String href) {
