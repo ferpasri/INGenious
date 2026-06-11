@@ -1,5 +1,8 @@
 {
-  "dependencies": {
-    "@playwright/cli": "^0.1.7"
-  }
+    "name": "ingenious-codex-runtime",
+    "private": true,
+    "type": "module",
+    "dependencies": {
+        "@openai/codex-sdk": "0.139.0"
+    }
 }

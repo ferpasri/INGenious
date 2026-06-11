@@ -14,6 +14,20 @@ Use these runtime-local paths:
 - preferred CLI launcher: `ingenious-cli.bat`
 - preferred BDD goal root: `.agents/bdd_goals`
 
+## Codex Windows note
+
+- When a Codex-style agent invokes the packaged Windows launcher, prefer:
+  - `cmd /c "ingenious-cli.bat ..."`
+- Do not rely on direct PowerShell execution of the `.bat` file when a `cmd /c` form is available.
+- The TESTAR CLI parser expects long options in `--name=value` form, not `--name value`.
+- For values containing spaces, keep the full `--name=value with spaces` token quoted as a single argument.
+- On Windows, if PowerShell quoting becomes brittle, prefer `Start-Process -FilePath cmd.exe -ArgumentList ... -Wait -NoNewWindow` and pass each `--name=value` token explicitly.
+- Keep the current working directory at the packaged runtime root so both `ingenious-cli.bat` and `.agents` resolve naturally.
+- For live TESTAR browser automation, prefer a Codex run configuration with:
+  - `sandboxMode = danger-full-access`
+  - network access enabled
+- A more restrictive Codex sandbox can allow file inspection but still block browser/driver creation during `testar session start`.
+
 ## When to use
 
 - The task requires driving a live web session through INGenious TESTAR CLI commands.
@@ -52,9 +66,9 @@ The TESTAR CLI auto-starts a local daemon on first use. The daemon keeps the act
 
 ### Session lifecycle
 
-- `ingenious-cli.bat testar session start -p <projectPath> --url <url> --bdd-goal <application/scenario_id>`
-- `ingenious-cli.bat testar session start -p <projectPath> --url <url> --bdd-file <scenarioFilePath>`
-- `ingenious-cli.bat testar session start -p <projectPath> --url <url> --bdd-scenario <scenarioName>`
+- `ingenious-cli.bat testar session start -p=<projectPath> --url=<url> --bdd-goal=<application/scenario_id>`
+- `ingenious-cli.bat testar session start -p=<projectPath> --url=<url> --bdd-file=<scenarioFilePath>`
+- `ingenious-cli.bat testar session start -p=<projectPath> --url=<url> --bdd-scenario=<scenarioName>`
 - `ingenious-cli.bat testar session status`
 - `ingenious-cli.bat testar session stop`
 
@@ -78,14 +92,14 @@ Required arguments:
 
 ### Actions
 
-- `ingenious-cli.bat testar action click --bdd-step <bddStep> --selector <cssSelector>`
-- `ingenious-cli.bat testar action fill --bdd-step <bddStep> --selector <cssSelector> --text <fillText>`
-- `ingenious-cli.bat testar action select --bdd-step <bddStep> --selector <cssSelector> --value <optionValue>`
+- `ingenious-cli.bat testar action click "--bdd-step=<bddStep>" "--selector=<cssSelector>"`
+- `ingenious-cli.bat testar action fill "--bdd-step=<bddStep>" "--selector=<cssSelector>" "--text=<fillText>"`
+- `ingenious-cli.bat testar action select "--bdd-step=<bddStep>" "--selector=<cssSelector>" "--value=<optionValue>"`
 - `ingenious-cli.bat testar action history`
 
 ### Assertions
 
-- `ingenious-cli.bat testar assert add --bdd-step <bddStep> --text <assertText>`
+- `ingenious-cli.bat testar assert add "--bdd-step=<bddStep>" "--text=<assertText>"`
 
 ## Parameter rules
 
@@ -191,18 +205,18 @@ Reusable components and supporting generated data are also persisted through the
   - `And the user fills out a big loan amount with a small down payment`
   - `And the user selects the account 13011 and applies for the loan`
   - `Then a message indicates the loan is denied`
-- `ingenious-cli.bat testar session start -p "Projects\\Parabank" --url "https://para.testar.org/" --bdd-goal "parabank/requested_loans_with_small_down_payments_must_be_denied"`
+- `cmd /c "ingenious-cli.bat testar session start -p=Projects\\Parabank --url=https://para.testar.org/ --bdd-goal=parabank/requested_loans_with_small_down_payments_must_be_denied"`
 - `ingenious-cli.bat testar state widgets`
-- `ingenious-cli.bat testar action fill --bdd-step "When the user logs in with the john/demo credentials" --selector "[type='text']" --text "john"`
-- `ingenious-cli.bat testar action fill --bdd-step "When the user logs in with the john/demo credentials" --selector "[type='password']" --text "demo"`
-- `ingenious-cli.bat testar action click --bdd-step "When the user logs in with the john/demo credentials" --selector "[type='submit']"`
-- `ingenious-cli.bat testar action click --bdd-step "And the user navigates to request a loan" --selector "a[href*='requestloan']"`
-- `ingenious-cli.bat testar action fill --bdd-step "And the user fills out a big loan amount with a small down payment" --selector "#amount" --text "999999"`
-- `ingenious-cli.bat testar action fill --bdd-step "And the user fills out a big loan amount with a small down payment" --selector "#downPayment" --text "100"`
-- `ingenious-cli.bat testar action select --bdd-step "And the user selects the account 13011 and applies for the loan" --selector "#fromAccountId" --value "13011"`
-- `ingenious-cli.bat testar action click --bdd-step "And the user selects the account 13011 and applies for the loan" --selector "input[value='Apply Now']"`
+- `ingenious-cli.bat testar action fill "--bdd-step=When the user logs in with the john/demo credentials" "--selector=[type='text']" "--text=john"`
+- `ingenious-cli.bat testar action fill "--bdd-step=When the user logs in with the john/demo credentials" "--selector=[type='password']" "--text=demo"`
+- `ingenious-cli.bat testar action click "--bdd-step=When the user logs in with the john/demo credentials" "--selector=[type='submit']"`
+- `ingenious-cli.bat testar action click "--bdd-step=And the user navigates to request a loan" "--selector=a[href*='requestloan']"`
+- `ingenious-cli.bat testar action fill "--bdd-step=And the user fills out a big loan amount with a small down payment" "--selector=#amount" "--text=999999"`
+- `ingenious-cli.bat testar action fill "--bdd-step=And the user fills out a big loan amount with a small down payment" "--selector=#downPayment" "--text=100"`
+- `ingenious-cli.bat testar action select "--bdd-step=And the user selects the account 13011 and applies for the loan" "--selector=#fromAccountId" "--value=13011"`
+- `ingenious-cli.bat testar action click "--bdd-step=And the user selects the account 13011 and applies for the loan" "--selector=input[value='Apply Now']"`
 - `ingenious-cli.bat testar state text`
-- `ingenious-cli.bat testar assert add --bdd-step "Then a message indicates the loan is denied" --text "Denied"`
+- `ingenious-cli.bat testar assert add "--bdd-step=Then a message indicates the loan is denied" "--text=Denied"`
 - `ingenious-cli.bat testar session stop`
 
 ## Operational rules

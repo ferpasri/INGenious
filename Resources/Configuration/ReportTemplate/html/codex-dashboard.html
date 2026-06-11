@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Codex Results Dashboard - INGenious</title>
+
+  <!-- Dashboard-specific styling for Codex benchmark runs -->
+  <link rel="stylesheet" href="media/css/codex-dashboard.css">
+
+  <!-- Structured metrics payload written by the Java writer -->
+  <script src="codex_metrics.js"></script>
+</head>
+<body>
+
+  <!--
+    Dashboard shell for Codex runs.
+    The Java writer copies this template into Results/Codex and the JS renderer
+    mounts the dashboard UI inside this root element.
+  -->
+  <div id="app"></div>
+
+  <!-- Dashboard behavior and rendering logic -->
+  <script src="media/js/codex-dashboard.js"></script>
+</body>
+</html>

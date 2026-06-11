@@ -14,8 +14,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [2/2] Building full distribution...
-call mvn clean install -U --file pom.xml
+echo [2/2] Building full distribution with Codex runtime dependencies...
+call mvn clean install -U -Pnpm-install --file pom.xml
 if errorlevel 1 (
     echo ERROR: incremental root build failed.
     popd

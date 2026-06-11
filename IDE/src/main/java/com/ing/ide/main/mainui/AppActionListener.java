@@ -11,6 +11,7 @@ import com.ing.ide.main.mainui.components.testdesign.testdata.ImportTestData;
 import com.ing.ide.main.settings.INGeniousSettings;
 import com.ing.ide.main.settings.DriverSettings;
 import com.ing.ide.main.settings.TMSettings;
+import com.ing.ide.main.testar.CodexResultsPanel;
 import com.ing.ide.main.testar.MCPAgentPanel;
 import com.ing.ide.main.googlerecordingjson.JsonParser;
 import com.ing.ide.main.playwrightrecording.PlaywrightRecordingParser;
@@ -69,6 +70,8 @@ public class AppActionListener implements ActionListener {
     private Timer autoSaveTimer;
 
     private final MCPAgentPanel mcpAgentPanel;
+
+    private final CodexResultsPanel codexResultsPanel;
     
     private boolean autoSaveEnabled = false;
     
@@ -89,6 +92,7 @@ public class AppActionListener implements ActionListener {
         injectScript = new InjectScript();
         importTestData = new ImportTestData(sMainFrame);
         mcpAgentPanel = new MCPAgentPanel(sMainFrame);
+        codexResultsPanel = new CodexResultsPanel(sMainFrame);
     }
 
     @Override
@@ -277,6 +281,9 @@ public class AppActionListener implements ActionListener {
                 break;
             case "MCP Results":
                 mcpAgentPanel.openMcpResultsDashboard();
+                break;
+            case "Codex Results":
+                codexResultsPanel.openCodexResultsDashboard();
                 break;
             case "Import SAP Recording":
                 {

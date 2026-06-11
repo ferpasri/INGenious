@@ -221,6 +221,9 @@ public class FXMenuBar extends JFXPanel {
         testarScriptless.getItems().add(
                 menuItem("MCP Results", "dashboard")
         );
+        testarScriptless.getItems().add(
+                menuItem("Codex Results", "dashboard")
+        );
         tools.getItems().add(testarScriptless);
 
         tools.getItems().add(
