@@ -15,6 +15,8 @@ import java.util.List;
 
 public final class TestarCliDaemonServer {
 
+    private static final String DAEMON_MODE_PROPERTY = "ingenious.testar.daemon";
+
     private TestarBackendApi backend;
     private final long daemonPid = ProcessHandle.current().pid();
     private volatile boolean running = true;
@@ -41,6 +43,7 @@ public final class TestarCliDaemonServer {
             throw new IllegalStateException("Unable to start TESTAR CLI daemon server", exception);
         } finally {
             serverSocket = null;
+            exitProcessIfRequested();
         }
     }
 
@@ -76,9 +79,7 @@ public final class TestarCliDaemonServer {
                 return sessionStatus();
             }
             if ("session.stop".equals(command)) {
-                TestarBackendApi loadedBackend = requireBackend();
-                TestarCliResponse response = wrapResult(loadedBackend.stopSession());
-                backend = null;
+                TestarCliResponse response = stopSessionAndShutdownDaemon();
                 shutdownRequested = true;
                 return withDaemonMetadata(response, false);
             }
@@ -167,6 +168,19 @@ public final class TestarCliDaemonServer {
         return withDaemonMetadata(wrapResult(backend.getSessionStatus()), true);
     }
 
+    private TestarCliResponse stopSessionAndShutdownDaemon() {
+        if (backend == null) {
+            return new TestarCliResponse(0, List.of(
+                    "status=stopped",
+                    "message=TESTAR daemon stopped."
+            ));
+        }
+
+        TestarCliResponse response = wrapResult(backend.stopSession());
+        backend = null;
+        return response;
+    }
+
     private TestarBackendApi requireBackend() {
         if (backend == null) {
             throw new IllegalStateException("No active TESTAR daemon session. Start one with 'ingenious testar session start'.");
@@ -210,6 +224,7 @@ public final class TestarCliDaemonServer {
             return;
         }
 
+        stopBackendQuietly();
         running = false;
         ServerSocket socket = serverSocket;
         if (socket == null || socket.isClosed()) {
@@ -221,6 +236,18 @@ public final class TestarCliDaemonServer {
         } catch (IOException exception) {
             // Ignore close failures during daemon shutdown.
         }
+    }
+
+    private void exitProcessIfRequested() {
+        if (!shutdownRequested || !isDedicatedDaemonProcess()) {
+            return;
+        }
+
+        System.exit(0);
+    }
+
+    private boolean isDedicatedDaemonProcess() {
+        return Boolean.parseBoolean(System.getProperty(DAEMON_MODE_PROPERTY, "false"));
     }
 
     private String sanitize(String value) {

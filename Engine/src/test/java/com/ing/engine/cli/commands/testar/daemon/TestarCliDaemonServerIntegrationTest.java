@@ -23,6 +23,7 @@ public class TestarCliDaemonServerIntegrationTest {
 
     @Test
     public void testSessionStopShutsDownRunningDaemonServer() throws Exception {
+        // Active-session integration path: verify the live daemon thread exits after session.stop.
         if (isPortReachable()) {
             throw new SkipException("TESTAR CLI daemon port is already in use.");
         }
@@ -47,6 +48,33 @@ public class TestarCliDaemonServerIntegrationTest {
         serverThread.join(3000L);
 
         verify(backend, times(1)).stopSession();
+        assertThat(serverThread.isAlive()).isFalse();
+        assertThat(isPortReachable()).isFalse();
+    }
+
+    @Test
+    public void testSessionStopShutsDownIdleDaemonServer() throws Exception {
+        // Idle-daemon integration path: verify session.stop also exits the live daemon when no backend is attached.
+        if (isPortReachable()) {
+            throw new SkipException("TESTAR CLI daemon port is already in use.");
+        }
+
+        TestarCliDaemonServer server = new TestarCliDaemonServer();
+        Thread serverThread = new Thread(server::run, "testar-cli-daemon-test-idle");
+        serverThread.setDaemon(true);
+        serverThread.start();
+
+        waitUntilReachable();
+
+        TestarCliResponse response = sendRequest(TestarCliRequest.of("session.stop", List.of()));
+
+        assertThat(response.getExitCode()).isZero();
+        assertThat(response.getLines()).contains("status=stopped");
+        assertThat(response.getLines()).contains("message=TESTAR daemon stopped.");
+        assertThat(response.getLines()).contains("daemonActiveSession=false");
+
+        serverThread.join(3000L);
+
         assertThat(serverThread.isAlive()).isFalse();
         assertThat(isPortReachable()).isFalse();
     }

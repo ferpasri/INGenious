@@ -27,6 +27,7 @@ public class TestarCliDaemonServerTest {
 
     @Test
     public void testHandleSessionStopMarksDaemonForShutdown() throws Exception {
+        // Active-session stop: backend exists, so stop must invoke the backend and mark daemon shutdown.
         TestarCliDaemonServer server = new TestarCliDaemonServer();
         TestarBackendApi backend = mock(TestarBackendApi.class);
         when(backend.stopSession()).thenReturn(TestarResult.success("stopped", "TESTAR session stopped.", null));
@@ -41,6 +42,20 @@ public class TestarCliDaemonServerTest {
         assertThat(response.getLines()).contains("message=TESTAR session stopped.");
         assertThat(response.getLines()).contains("daemonActiveSession=false");
         assertThat(getPrivateField(server, "backend")).isNull();
+        assertThat((Boolean) getPrivateField(server, "shutdownRequested")).isTrue();
+    }
+
+    @Test
+    public void testHandleSessionStopWithoutBackendStillStopsDaemon() throws Exception {
+        // Idle-daemon stop: no backend exists, but session.stop must still shut down the daemon cleanly.
+        TestarCliDaemonServer server = new TestarCliDaemonServer();
+
+        TestarCliResponse response = server.handle(TestarCliRequest.of("session.stop", List.of()));
+
+        assertThat(response.getExitCode()).isZero();
+        assertThat(response.getLines()).contains("status=stopped");
+        assertThat(response.getLines()).contains("message=TESTAR daemon stopped.");
+        assertThat(response.getLines()).contains("daemonActiveSession=false");
         assertThat((Boolean) getPrivateField(server, "shutdownRequested")).isTrue();
     }
 
