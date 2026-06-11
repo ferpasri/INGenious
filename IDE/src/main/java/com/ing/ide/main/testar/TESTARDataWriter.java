@@ -352,8 +352,7 @@ public class TESTARDataWriter {
         WebORPage webORPage = webOR.addPage(webPageTitle);
 
         // Add the element to the OR
-        String trimmedText = assertText.length() > 10 ? assertText.substring(0, 10) : assertText;
-        String elementDescription = "assert" + trimmedText + "[text]";
+        String elementDescription = describeAssertElement(assertText);
         ObjectGroup objectGroup = webORPage.addObjectGroup(elementDescription);
         WebORObject webORObject = (WebORObject) objectGroup.addObject(elementDescription);
         webORObject.setAttributeByName("Text", assertText);
@@ -373,6 +372,18 @@ public class TESTARDataWriter {
                 input,
                 reference
         );
+    }
+
+    private String describeAssertElement(String assertText) {
+        String trimmedText = assertText == null ? "" : assertText.trim();
+        if (trimmedText.length() > 10) {
+            trimmedText = trimmedText.substring(0, 10);
+        }
+        String descriptor = trimmedText.replaceAll("\\s+", "");
+        if (descriptor.isEmpty()) {
+            descriptor = "Text";
+        }
+        return "assert" + descriptor + "[text]";
     }
 
     public void saveExecutionSteps() {

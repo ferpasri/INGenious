@@ -9,17 +9,23 @@ import static org.mockito.Mockito.when;
 import com.ing.datalib.component.Project;
 import com.ing.datalib.component.Scenario;
 import com.ing.datalib.component.TestCase;
+import com.ing.datalib.component.TestStep;
 import com.ing.datalib.or.common.ObjectGroup;
 import com.ing.datalib.or.web.WebORObject;
 import com.ing.datalib.or.web.WebORPage;
 import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
+import com.ing.ide.main.testar.playwright.system.PlaywrightState;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
@@ -157,11 +163,79 @@ public class TESTARDataWriterTest {
         assertThat(objectGroup.getObjects()).hasSize(1);
     }
 
+    @Test
+    public void testAddAssertToExistingPageWithWidgets() throws IOException {
+        TESTARDataWriter writer = createWriter();
+        Page page = mockPage("Initial Page");
+        PlaywrightState state = mockState(page);
+
+        WebORObject widgetObject = writer.addWidgetObject(
+                mockWidget(
+                        "Log In",
+                        "input",
+                        "submit",
+                        "",
+                        "",
+                        "",
+                        "//input[@type='submit']",
+                        "[type='submit']",
+                        "",
+                        "",
+                        "",
+                        ""
+                ),
+                page
+        );
+
+        writer.addAssertTestStep("Given the page is open", state, "Customer Login");
+
+        WebORPage webORPage = (WebORPage) widgetObject.getParent().getParent();
+
+        assertThat(webORPage.getObjectGroups()).hasSize(2);
+        assertThat(webORPage.getObjectGroupByName("assertCustomerL[text]")).isNotNull();
+        assertThat(webORPage.getObjectGroupByName("assertCustomerL[text]")
+                .getObjectByName("assertCustomerL[text]")
+                .getAttributeByName("Text")).isEqualTo("Customer Login");
+    }
+
+    @Test
+    public void testAddWidgetToPageThatAlreadyContainsAssert() throws IOException {
+        TESTARDataWriter writer = createWriter();
+        Page page = mockPage("Welcome Page");
+        PlaywrightState state = mockState(page);
+
+        writer.addAssertTestStep("Given the page is open", state, "Customer Login");
+        WebORObject widgetObject = writer.addWidgetObject(
+                mockWidget(
+                        "username",
+                        "input",
+                        "text",
+                        "",
+                        "",
+                        "",
+                        "//input[@type='text']",
+                        "[type='text']",
+                        "",
+                        "",
+                        "",
+                        ""
+                ),
+                page
+        );
+
+        WebORPage webORPage = (WebORPage) widgetObject.getParent().getParent();
+
+        assertThat(webORPage.getObjectGroups()).hasSize(2);
+        assertThat(webORPage.getObjectGroupByName("assertCustomerL[text]")).isNotNull();
+        assertThat(webORPage.getObjectGroupByName("username[input]")).isNotNull();
+    }
+
     private TESTARDataWriter createWriter() throws IOException {
         tempDir = Files.createTempDirectory("ingenious-testar-writer-test");
         Project project = mock(Project.class);
         Scenario bddScenario = mock(Scenario.class);
         Scenario reusableScenario = mock(Scenario.class);
+        Map<String, TestCase> reusableTestCases = new HashMap<>();
 
         when(project.getName()).thenReturn("TestProject");
         when(project.getLocation()).thenReturn(tempDir.toString());
@@ -169,14 +243,35 @@ public class TESTARDataWriterTest {
         when(project.getScenarioByName("BDD-MCP_scenario")).thenReturn(bddScenario);
         when(project.getReusableScenarioByName(anyString())).thenReturn(null);
         when(project.addReusableScenario(anyString())).thenReturn(reusableScenario);
-        when(bddScenario.addTestCase(anyString())).thenAnswer(invocation -> {
+        when(bddScenario.addTestCase(anyString())).thenAnswer(invocation ->
+                createMockTestCase(invocation.getArgument(0, String.class))
+        );
+        when(reusableScenario.getTestCaseByName(anyString())).thenAnswer(invocation ->
+                reusableTestCases.get(invocation.getArgument(0, String.class))
+        );
+        when(reusableScenario.addTestCase(anyString())).thenAnswer(invocation -> {
             String testCaseName = invocation.getArgument(0, String.class);
-            TestCase testCase = mock(TestCase.class);
-            when(testCase.getName()).thenReturn(testCaseName);
+            TestCase testCase = createMockTestCase(testCaseName);
+            reusableTestCases.put(testCaseName, testCase);
             return testCase;
         });
 
         return new TESTARDataWriter(project, "Loan Scenario");
+    }
+
+    private TestCase createMockTestCase(String testCaseName) {
+        TestCase testCase = mock(TestCase.class);
+        List<TestStep> testSteps = new ArrayList<>();
+
+        when(testCase.getName()).thenReturn(testCaseName);
+        when(testCase.getTestSteps()).thenReturn(testSteps);
+        when(testCase.addNewStep()).thenAnswer(invocation -> {
+            TestStep testStep = mock(TestStep.class);
+            testSteps.add(testStep);
+            return testStep;
+        });
+
+        return testCase;
     }
 
     private Page mockPage(String title) {
@@ -189,6 +284,12 @@ public class TESTARDataWriterTest {
         when(locator.count()).thenReturn(1);
 
         return page;
+    }
+
+    private PlaywrightState mockState(Page page) {
+        PlaywrightState state = mock(PlaywrightState.class);
+        when(state.getPage()).thenReturn(page);
+        return state;
     }
 
     private PlaywrightWidget mockWidget(
