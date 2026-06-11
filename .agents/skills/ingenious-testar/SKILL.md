@@ -143,7 +143,8 @@ When `testar state widgets`, `testar state text`, or `testar state image` fails,
 ## Daemon behavior
 
 - The daemon starts automatically on the first TESTAR CLI command if it is not already running.
-- `session stop` stops the active TESTAR session, but the daemon process may remain alive.
+- `session stop` stops the active TESTAR session and shuts down the local daemon.
+- A later TESTAR CLI command will start the daemon again automatically if needed.
 - The CLI prints:
   - `daemonPid`
   - `daemonActiveSession`
@@ -153,7 +154,7 @@ When `testar state widgets`, `testar state text`, or `testar state image` fails,
   - `knownBddSteps`
   - `executedBddSteps`
   - `latestValidStep`
-- If needed, the daemon process can be terminated manually using the printed PID.
+- If `session stop` is not invoked, the daemon process can be terminated manually using the printed PID.
 
 ## Artifact generation
 

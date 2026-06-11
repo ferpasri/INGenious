@@ -17,21 +17,30 @@ public final class TestarCliDaemonServer {
 
     private TestarBackendApi backend;
     private final long daemonPid = ProcessHandle.current().pid();
+    private volatile boolean running = true;
+    private volatile boolean shutdownRequested;
+    private ServerSocket serverSocket;
 
     public void run() {
-        try (ServerSocket serverSocket = new ServerSocket(TestarCliDaemonConfig.PORT, 50)) {
+        try (ServerSocket boundServerSocket = new ServerSocket(TestarCliDaemonConfig.PORT, 50)) {
+            this.serverSocket = boundServerSocket;
             Runtime.getRuntime().addShutdownHook(new Thread(this::stopBackendQuietly));
-            while (true) {
+            while (running) {
                 try (Socket socket = serverSocket.accept()) {
                     handle(socket);
                 } catch (EOFException exception) {
                     // Ignore empty reachability probes.
                 } catch (IOException exception) {
+                    if (!running) {
+                        break;
+                    }
                     // Keep daemon alive for subsequent requests.
                 }
             }
         } catch (IOException exception) {
             throw new IllegalStateException("Unable to start TESTAR CLI daemon server", exception);
+        } finally {
+            serverSocket = null;
         }
     }
 
@@ -53,9 +62,11 @@ public final class TestarCliDaemonServer {
             }
             output.flush();
         }
+
+        shutdownIfRequested();
     }
 
-    private synchronized TestarCliResponse handle(TestarCliRequest request) {
+    synchronized TestarCliResponse handle(TestarCliRequest request) {
         String command = request.getCommand();
         try {
             if ("session.start".equals(command)) {
@@ -68,7 +79,8 @@ public final class TestarCliDaemonServer {
                 TestarBackendApi loadedBackend = requireBackend();
                 TestarCliResponse response = wrapResult(loadedBackend.stopSession());
                 backend = null;
-                return withDaemonMetadata(response, true);
+                shutdownRequested = true;
+                return withDaemonMetadata(response, false);
             }
             if ("navigation.url".equals(command)) {
                 return wrapResult(requireBackend().getCurrentUrl());
@@ -190,6 +202,24 @@ public final class TestarCliDaemonServer {
             // Ignore shutdown failures during replacement/shutdown.
         } finally {
             backend = null;
+        }
+    }
+
+    private void shutdownIfRequested() {
+        if (!shutdownRequested) {
+            return;
+        }
+
+        running = false;
+        ServerSocket socket = serverSocket;
+        if (socket == null || socket.isClosed()) {
+            return;
+        }
+
+        try {
+            socket.close();
+        } catch (IOException exception) {
+            // Ignore close failures during daemon shutdown.
         }
     }
 
