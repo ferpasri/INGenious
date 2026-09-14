@@ -5,20 +5,22 @@ import java.util.Map;
 
 /**
  * Interface defining the contract for Large Language Model (LLM) providers.
- * 
+ *
  * <p>
  * This interface is part of a <strong>Multi-LLM Architecture</strong> designed
  * to support multiple AI providers (OpenAI, Google Gemini, Meta Llama, etc.).
  * </p>
  */
 public interface LlmProvider {
-
     /**
      * Executes a prompt and retrieves the response.
      */
-    LlmProviderResponse executePrompt(String systemPrompt,
-                                      List<Map<String, Object>> input,
-                                      boolean visionRequested) throws LlmProviderException;
+    LlmProviderResponse executePrompt(
+        String systemPrompt,
+        List<Map<String, Object>> input,
+        boolean visionRequested
+    )
+        throws LlmProviderException;
 
     /**
      * Registers the available MCP tools with the provider.
@@ -36,7 +38,7 @@ public interface LlmProvider {
     boolean supportsVision();
 
     /**
-     * Checks if the current model is a reasoning model that supports 
+     * Checks if the current model is a reasoning model that supports
      * reasoning effort configuration.
      */
     boolean isReasoningModel();
@@ -47,5 +49,4 @@ public interface LlmProvider {
     default int getLastTokenUsage() {
         return 0;
     }
-
 }

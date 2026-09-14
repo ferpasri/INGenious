@@ -13,13 +13,11 @@ import com.ing.ide.main.testar.mcp.McpAgentSettings;
  * </p>
  */
 public final class LlmProviderFactory {
-
     public static final String PROVIDER_OPENAI = "OpenAI";
     public static final String PROVIDER_GEMINI = "Gemini";
     public static final String PROVIDER_OLLAMA = "Ollama";
 
-    private LlmProviderFactory() {
-    }
+    private LlmProviderFactory() {}
 
     /**
      * Creates the provider implementation selected in the Studio MCP settings.
@@ -28,7 +26,10 @@ public final class LlmProviderFactory {
         String providerName = normalizeProviderName(settings.llmProviderName);
         String model = defaultIfBlank(settings.openaiModel, defaultModelFor(providerName));
         String apiUrl = defaultIfBlank(settings.apiUrl, defaultApiUrlFor(providerName));
-        String apiKeyEnvVarName = defaultIfBlank(settings.apiKeyEnvVarName, defaultApiKeyEnvVarFor(providerName));
+        String apiKeyEnvVarName = defaultIfBlank(
+            settings.apiKeyEnvVarName,
+            defaultApiKeyEnvVarFor(providerName)
+        );
         String apiKey = System.getenv(apiKeyEnvVarName);
 
         switch (providerName) {
@@ -40,15 +41,15 @@ public final class LlmProviderFactory {
             default:
                 if (apiKey == null || apiKey.isBlank()) {
                     throw new IllegalStateException(
-                            "Environment variable '" + apiKeyEnvVarName + "' is not set or is empty."
+                        "Environment variable '" + apiKeyEnvVarName + "' is not set or is empty."
                     );
                 }
                 return new OpenAiProvider(
-                        apiUrl,
-                        apiKey,
-                        model,
-                        settings.vision != null && settings.vision,
-                        settings.reasoningLevel
+                    apiUrl,
+                    apiKey,
+                    model,
+                    settings.vision != null && settings.vision,
+                    settings.reasoningLevel
                 );
         }
     }
@@ -118,5 +119,4 @@ public final class LlmProviderFactory {
     private static String defaultIfBlank(String value, String defaultValue) {
         return value != null && !value.isBlank() ? value : defaultValue;
     }
-
 }

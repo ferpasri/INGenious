@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 
 public final class TestarCliResponse {
-
     private final int exitCode;
     private final List<String> lines;
 

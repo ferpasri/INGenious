@@ -19,13 +19,12 @@ import com.ing.ide.main.testar.mcp.helper.McpToolExecutor;
  * - Return values should be concise and produced through {@link Feedback} to keep ISSUE/valid formatting consistent.
  */
 public interface McpInterface {
-
     String bddStepDescription = "The BDD step text associated with this action. Do not modify.";
 
     @McpMethod(description = "Load the web URL to be tested.")
     Feedback loadWebURL(
-            @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
-            @McpParam(name = "url", description = "The web url to be tested.") String url
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(name = "url", description = "The web url to be tested.") String url
     );
 
     @McpMethod(description = "Get the current web url that is being tested.")
@@ -34,30 +33,49 @@ public interface McpInterface {
     @McpMethod(description = "Navigate back to the previous web page.")
     Feedback navigateBack();
 
-    @McpMethod(description = "Get a list of current interactive GUI web elements with CSS selector, visible text, tag type, and accessibility attributes.")
+    @McpMethod(
+        description = "Get a list of current interactive GUI web elements with CSS selector, visible text, tag type, and accessibility attributes."
+    )
     Feedback getStateInteractiveWidgets();
 
     @McpMethod(description = "Use a CSS selector to click an element.")
     Feedback executeClickAction(
-            @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
-            @McpParam(name = "cssSelector", description = "The CSS selector of the clickable element.") String cssSelector
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "cssSelector",
+            description = "The CSS selector of the clickable element."
+        ) String cssSelector
     );
 
     @McpMethod(description = "Use a CSS selector to fill text into an input element.")
     Feedback executeFillAction(
-            @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
-            @McpParam(name = "cssSelector", description = "The CSS selector of the input element to be filled.") String cssSelector,
-            @McpParam(name = "fillText", description = "The text to be entered into the input element.") String fillText
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "cssSelector",
+            description = "The CSS selector of the input element to be filled."
+        ) String cssSelector,
+        @McpParam(
+            name = "fillText",
+            description = "The text to be entered into the input element."
+        ) String fillText
     );
 
     @McpMethod(description = "Use a CSS selector to select an option value into a select element.")
     Feedback executeSelectAction(
-            @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
-            @McpParam(name = "cssSelector", description = "The CSS selector of the select element to be changed.") String cssSelector,
-            @McpParam(name = "optionValue", description = "The option value to be selected into the select element.") String optionValue
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "cssSelector",
+            description = "The CSS selector of the select element to be changed."
+        ) String cssSelector,
+        @McpParam(
+            name = "optionValue",
+            description = "The option value to be selected into the select element."
+        ) String optionValue
     );
 
-    @McpMethod(description = "Check the information of the executed actions during the BDD test process.")
+    @McpMethod(
+        description = "Check the information of the executed actions during the BDD test process."
+    )
     Feedback checkExecutedActions();
 
     @McpMethod(description = "Get an image of the current GUI state.")
@@ -68,11 +86,15 @@ public interface McpInterface {
 
     @McpMethod(description = "Add a unique text that can be used to assert a BDD step.")
     Feedback addStepAssert(
-            @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
-            @McpParam(name = "assertText", description = "A visible unique text that can be used as text locator assert.") String assertText
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "assertText",
+            description = "A visible unique text that can be used as text locator assert."
+        ) String assertText
     );
 
-    @McpMethod(description = "Stop the test execution when the final assert is completed successfully.")
+    @McpMethod(
+        description = "Stop the test execution when the final assert is completed successfully."
+    )
     void stopTestExecution();
-
 }

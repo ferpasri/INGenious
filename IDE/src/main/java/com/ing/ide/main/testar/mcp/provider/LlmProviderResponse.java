@@ -14,14 +14,15 @@ import java.util.Map;
  * </p>
  */
 public class LlmProviderResponse {
-
     private final String outputText;
     private final List<LlmToolCall> toolCalls;
     private final List<Map<String, Object>> assistantItems;
 
-    public LlmProviderResponse(String outputText,
-                               List<LlmToolCall> toolCalls,
-                               List<Map<String, Object>> assistantItems) {
+    public LlmProviderResponse(
+        String outputText,
+        List<LlmToolCall> toolCalls,
+        List<Map<String, Object>> assistantItems
+    ) {
         this.outputText = outputText != null ? outputText : "";
         this.toolCalls = toolCalls != null ? toolCalls : Collections.emptyList();
         this.assistantItems = assistantItems != null ? assistantItems : Collections.emptyList();
@@ -42,5 +43,4 @@ public class LlmProviderResponse {
     public boolean hasToolCalls() {
         return !toolCalls.isEmpty();
     }
-
 }

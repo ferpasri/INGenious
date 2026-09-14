@@ -6,7 +6,6 @@ import com.microsoft.playwright.Page;
 import org.testar.monkey.alayer.Action;
 
 public interface PersistenceService {
-
     void recordLoadWebUrl(String bddStep, String url);
 
     void recordNavigateBack();

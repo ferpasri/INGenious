@@ -2,7 +2,6 @@ package com.ing.ide.main.testar.mcp.metrics;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,11 +23,9 @@ import java.util.logging.Logger;
  * </p>
  */
 public class LlmMetricsWriter {
-
     private static final Logger LOGGER = Logger.getLogger(LlmMetricsWriter.class.getName());
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
-    private static final TypeReference<List<Map<String, Object>>> RUN_LIST_TYPE =
-            new TypeReference<List<Map<String, Object>>>() { };
+    private static final TypeReference<List<Map<String, Object>>> RUN_LIST_TYPE = new TypeReference<List<Map<String, Object>>>() {};
     private final LlmMetricsDashboardWriter dashboardWriter = new LlmMetricsDashboardWriter();
 
     public void writeRunMetrics(LlmRunMetrics metrics) {
@@ -48,7 +45,9 @@ public class LlmMetricsWriter {
             Path aggregateFile = metricsRoot.resolve("mcp_all_runs.json");
             List<Map<String, Object>> allRuns = loadAllRuns(aggregateFile);
             allRuns.add(payload);
-            JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValue(aggregateFile.toFile(), allRuns);
+            JSON_MAPPER
+                .writerWithDefaultPrettyPrinter()
+                .writeValue(aggregateFile.toFile(), allRuns);
             dashboardWriter.writeDashboard(metricsRoot, allRuns);
         } catch (IOException exception) {
             LOGGER.log(Level.SEVERE, "Failed to write LLM MCP metrics", exception);

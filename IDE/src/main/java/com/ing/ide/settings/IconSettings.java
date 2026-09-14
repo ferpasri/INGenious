@@ -170,7 +170,7 @@ public class IconSettings {
     }
 
     public Icon getTESTARIcon() {
-    	return testarIcon;
+        return testarIcon;
     }
 
     public Icon getHelpIcon() {

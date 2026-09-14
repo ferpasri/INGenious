@@ -334,12 +334,8 @@ public class FXMenuBar extends JFXPanel {
             );
 
         Menu testarScriptless = new Menu("TESTAR Scriptless");
-        testarScriptless.getItems().add(
-                menuItem("MCP Agent", "testdesign")
-        );
-        testarScriptless.getItems().add(
-                menuItem("MCP Results", "dashboard")
-        );
+        testarScriptless.getItems().add(menuItem("MCP Agent", "testdesign"));
+        testarScriptless.getItems().add(menuItem("MCP Results", "dashboard"));
         tools.getItems().add(testarScriptless);
 
         return tools;

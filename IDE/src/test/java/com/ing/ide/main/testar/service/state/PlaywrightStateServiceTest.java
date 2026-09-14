@@ -23,7 +23,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 public class PlaywrightStateServiceTest {
-
     private PersistenceService persistenceService;
     private PlaywrightStateService stateService;
     private SessionContext context;
@@ -49,44 +48,43 @@ public class PlaywrightStateServiceTest {
     @Test
     public void testStateOnlyPersistsEligibleWidgets() {
         PlaywrightWidget eligibleWidget = mockInteractiveWidget(
-                "#username",
-                "",
-                "input",
-                "Username",
-                "Username",
-                "username"
+            "#username",
+            "",
+            "input",
+            "Username",
+            "Username",
+            "username"
         );
         PlaywrightWidget widgetWithoutCss = mockInteractiveWidget(
-                "",
-                "",
-                "input",
-                "Ignored",
-                "Ignored",
-                "ignored"
+            "",
+            "",
+            "input",
+            "Ignored",
+            "Ignored",
+            "ignored"
         );
         PlaywrightWidget externalLinkWidget = mockInteractiveWidget(
-                "#external-help",
-                "https://example.com/help",
-                "a",
-                "Help",
-                "Help",
-                "help"
+            "#external-help",
+            "https://example.com/help",
+            "a",
+            "Help",
+            "Help",
+            "help"
         );
 
         Page page = mock(Page.class);
         when(page.url()).thenReturn("https://para.testar.org");
 
-        try (MockedConstruction<PlaywrightState> ignored = mockConstruction(
+        try (
+            MockedConstruction<PlaywrightState> ignored = mockConstruction(
                 PlaywrightState.class,
                 (stateMock, constructionContext) -> {
                     when(stateMock.getPage()).thenReturn(page);
-                    when(stateMock.getInteractiveWidgets()).thenReturn(List.of(
-                            eligibleWidget,
-                            widgetWithoutCss,
-                            externalLinkWidget
-                    ));
-                })) {
-
+                    when(stateMock.getInteractiveWidgets())
+                        .thenReturn(List.of(eligibleWidget, widgetWithoutCss, externalLinkWidget));
+                }
+            )
+        ) {
             Feedback feedback = stateService.getStateInteractiveWidgets(context);
 
             assertThat(feedback.isIssue()).isFalse();
@@ -102,26 +100,29 @@ public class PlaywrightStateServiceTest {
     @Test
     public void testStateVisualTextPersistsWidgets() {
         PlaywrightWidget eligibleWidget = mockInteractiveWidget(
-                "#loan-amount",
-                "",
-                "input",
-                "Loan Amount",
-                "Loan Amount",
-                "loanAmount"
+            "#loan-amount",
+            "",
+            "input",
+            "Loan Amount",
+            "Loan Amount",
+            "loanAmount"
         );
         PlaywrightWidget visibleTextWidget = mockVisibleTextWidget("Denied");
 
         Page page = mock(Page.class);
         when(page.url()).thenReturn("https://para.testar.org");
 
-        try (MockedConstruction<PlaywrightState> ignored = mockConstruction(
+        try (
+            MockedConstruction<PlaywrightState> ignored = mockConstruction(
                 PlaywrightState.class,
                 (stateMock, constructionContext) -> {
                     when(stateMock.getPage()).thenReturn(page);
                     when(stateMock.getInteractiveWidgets()).thenReturn(List.of(eligibleWidget));
-                    when(stateMock.getVisibleWidgetsWithText()).thenReturn(List.of(visibleTextWidget));
-                })) {
-
+                    when(stateMock.getVisibleWidgetsWithText())
+                        .thenReturn(List.of(visibleTextWidget));
+                }
+            )
+        ) {
             Feedback feedback = stateService.getStateVisualText(context);
 
             assertThat(feedback.isIssue()).isFalse();
@@ -132,12 +133,12 @@ public class PlaywrightStateServiceTest {
     }
 
     private PlaywrightWidget mockInteractiveWidget(
-            String cssSelector,
-            String href,
-            String tagName,
-            String locatorText,
-            String innerText,
-            String fieldName
+        String cssSelector,
+        String href,
+        String tagName,
+        String locatorText,
+        String innerText,
+        String fieldName
     ) {
         PlaywrightWidget widget = mock(PlaywrightWidget.class);
 

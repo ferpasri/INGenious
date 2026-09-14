@@ -6,19 +6,19 @@ import com.ing.ide.main.Main;
 import com.ing.ide.main.bdd.BddParser;
 import com.ing.ide.main.explorer.ExplorerBar;
 import com.ing.ide.main.googlerecordingjson.JsonParser;
+import com.ing.ide.main.googlerecordingjson.JsonParser;
 import com.ing.ide.main.help.Help;
 import com.ing.ide.main.mainui.components.testdesign.testdata.ImportTestData;
-import com.ing.ide.main.settings.INGeniousSettings;
-import com.ing.ide.main.settings.DriverSettings;
-import com.ing.ide.main.settings.TMSettings;
-import com.ing.ide.main.testar.MCPAgentPanel;
-import com.ing.ide.main.googlerecordingjson.JsonParser;
 import com.ing.ide.main.playwrightrecording.PlaywrightRecordingParser;
 import com.ing.ide.main.playwrightrecording.RecordedStepsNameDialogue;
 import com.ing.ide.main.sapscript.SapScriptParser;
 import com.ing.ide.main.settings.DriverSettings;
+import com.ing.ide.main.settings.DriverSettings;
+import com.ing.ide.main.settings.INGeniousSettings;
 import com.ing.ide.main.settings.INGeniousSettings;
 import com.ing.ide.main.settings.TMSettings;
+import com.ing.ide.main.settings.TMSettings;
+import com.ing.ide.main.testar.MCPAgentPanel;
 import com.ing.ide.main.ui.AboutUI;
 import com.ing.ide.main.ui.InjectScript;
 import com.ing.ide.main.ui.NewProject;
@@ -299,7 +299,7 @@ public class AppActionListener implements ActionListener {
                             .log(Level.SEVERE, null, ex);
                     }
                 }
-                 break;
+                break;
             case "MCP Agent":
                 mcpAgentPanel.openEditor();
                 break;

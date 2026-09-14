@@ -10,7 +10,6 @@ package com.ing.ide.main.testar.mcp.provider;
  * </p>
  */
 public class LlmProviderException extends Exception {
-
     private final int statusCode;
     private final boolean retryable;
     private final long retryAfterMillis;
@@ -23,15 +22,22 @@ public class LlmProviderException extends Exception {
         this(message, cause, 0, false, 0L);
     }
 
-    public LlmProviderException(String message, int statusCode, boolean retryable, long retryAfterMillis) {
+    public LlmProviderException(
+        String message,
+        int statusCode,
+        boolean retryable,
+        long retryAfterMillis
+    ) {
         this(message, null, statusCode, retryable, retryAfterMillis);
     }
 
-    public LlmProviderException(String message,
-                                Throwable cause,
-                                int statusCode,
-                                boolean retryable,
-                                long retryAfterMillis) {
+    public LlmProviderException(
+        String message,
+        Throwable cause,
+        int statusCode,
+        boolean retryable,
+        long retryAfterMillis
+    ) {
         super(message, cause);
         this.statusCode = statusCode;
         this.retryable = retryable;
@@ -49,5 +55,4 @@ public class LlmProviderException extends Exception {
     public long getRetryAfterMillis() {
         return retryAfterMillis;
     }
-
 }

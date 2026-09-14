@@ -10,7 +10,6 @@ package com.ing.ide.main.testar.mcp.provider;
  * </p>
  */
 public class LlmToolCall {
-
     private final String callId;
     private final String toolName;
     private final String argumentsJson;
@@ -32,5 +31,4 @@ public class LlmToolCall {
     public String getArgumentsJson() {
         return argumentsJson;
     }
-
 }

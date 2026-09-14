@@ -21,17 +21,15 @@ import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
 import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
-import org.testar.monkey.alayer.Action;
-import org.testar.monkey.alayer.Tags;
-
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import org.testar.monkey.alayer.Action;
+import org.testar.monkey.alayer.Tags;
 
 public class TESTARDataWriter {
-
     private final Project project;
     private final ObjectRepository objectRepository;
     private final WebOR webOR;
@@ -66,15 +64,17 @@ public class TESTARDataWriter {
         String bddScenarioName = "BDD-MCP_scenario";
         // Attach the scenario to the Project instance, to be visible to reusable persistence.
         Scenario createdBddScenario = this.project.addScenario(bddScenarioName);
-        return createdBddScenario != null ? createdBddScenario : this.project.getScenarioByName(bddScenarioName);
+        return createdBddScenario != null
+            ? createdBddScenario
+            : this.project.getScenarioByName(bddScenarioName);
     }
 
     private TestCase setMainTestCase() {
         String timestamp = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
         String scenarioPrefix = sanitizeScenarioName(bddScenarioName);
         String testCaseName = scenarioPrefix.isEmpty()
-                ? timestamp
-                : scenarioPrefix + "_" + timestamp;
+            ? timestamp
+            : scenarioPrefix + "_" + timestamp;
         return this.bddScenario.addTestCase(testCaseName);
     }
 
@@ -99,12 +99,15 @@ public class TESTARDataWriter {
         if (resuableStepDefinitionsScenarioName.isEmpty()) {
             resuableStepDefinitionsScenarioName = "BDD-MCP-Reusable";
         }
-        Scenario existingReusableStepScenario = this.project.getReusableScenarioByName(resuableStepDefinitionsScenarioName);
+        Scenario existingReusableStepScenario =
+            this.project.getReusableScenarioByName(resuableStepDefinitionsScenarioName);
         if (existingReusableStepScenario != null) {
             return existingReusableStepScenario;
         }
         Scenario created = this.project.addReusableScenario(resuableStepDefinitionsScenarioName);
-        return created != null ? created : this.project.getReusableScenarioByName(resuableStepDefinitionsScenarioName);
+        return created != null
+            ? created
+            : this.project.getReusableScenarioByName(resuableStepDefinitionsScenarioName);
     }
 
     /** Add the action-element info into INGenious */
@@ -118,10 +121,11 @@ public class TESTARDataWriter {
         String text = playwrightWidget.get(PlaywrightTags.WebLocatorText);
         if (text != null && !text.isEmpty()) {
             String evaluatedText = evaluateLocatorWithExactFallback(
-                    exact -> {
-                        Page.GetByTextOptions opts = new Page.GetByTextOptions().setExact(exact);
-                        return page.getByText(text, opts);
-                    }, text
+                exact -> {
+                    Page.GetByTextOptions opts = new Page.GetByTextOptions().setExact(exact);
+                    return page.getByText(text, opts);
+                },
+                text
             );
             webORObject.setAttributeByName("Text", evaluatedText);
         }
@@ -129,10 +133,11 @@ public class TESTARDataWriter {
         String label = playwrightWidget.get(PlaywrightTags.WebLocatorLabel);
         if (label != null && !label.isEmpty()) {
             String evaluatedLabel = evaluateLocatorWithExactFallback(
-                    exact -> {
-                        Page.GetByLabelOptions opts = new Page.GetByLabelOptions().setExact(exact);
-                        return page.getByLabel(label, opts);
-                    }, label
+                exact -> {
+                    Page.GetByLabelOptions opts = new Page.GetByLabelOptions().setExact(exact);
+                    return page.getByLabel(label, opts);
+                },
+                label
             );
             webORObject.setAttributeByName("Label", evaluatedLabel);
         }
@@ -140,15 +145,30 @@ public class TESTARDataWriter {
         webORObject.setAttributeByName("Role", playwrightWidget.get(PlaywrightTags.WebLocatorRole));
         webORObject.setXpath(playwrightWidget.get(PlaywrightTags.WebLocatorXPath));
         webORObject.setCss(playwrightWidget.get(PlaywrightTags.WebLocatorCSS));
-        webORObject.setAttributeByName("Placeholder", playwrightWidget.get(PlaywrightTags.WebLocatorPlaceholder));
-        webORObject.setAttributeByName("AltText", playwrightWidget.get(PlaywrightTags.WebLocatorAltText));
-        webORObject.setAttributeByName("Title", playwrightWidget.get(PlaywrightTags.WebLocatorTitle));
-        webORObject.setAttributeByName("TestId", playwrightWidget.get(PlaywrightTags.WebLocatorTestId));
+        webORObject.setAttributeByName(
+            "Placeholder",
+            playwrightWidget.get(PlaywrightTags.WebLocatorPlaceholder)
+        );
+        webORObject.setAttributeByName(
+            "AltText",
+            playwrightWidget.get(PlaywrightTags.WebLocatorAltText)
+        );
+        webORObject.setAttributeByName(
+            "Title",
+            playwrightWidget.get(PlaywrightTags.WebLocatorTitle)
+        );
+        webORObject.setAttributeByName(
+            "TestId",
+            playwrightWidget.get(PlaywrightTags.WebLocatorTestId)
+        );
 
         return webORObject;
     }
 
-    private String evaluateLocatorWithExactFallback(Function<Boolean, Locator> locatorBuilder, String value) {
+    private String evaluateLocatorWithExactFallback(
+        Function<Boolean, Locator> locatorBuilder,
+        String value
+    ) {
         try {
             Locator locator = locatorBuilder.apply(false);
             int count = locator.count();
@@ -162,14 +182,15 @@ public class TESTARDataWriter {
                 if (exactCount == 1) return value + ";exact";
             }
         } catch (Exception e) {
-            java.util.logging.Logger.getLogger(TESTARDataWriter.class.getName()).log(
+            java
+                .util.logging.Logger.getLogger(TESTARDataWriter.class.getName())
+                .log(
                     java.util.logging.Level.SEVERE,
-                    "Locator evaluation failed for '{" +value  + "}'"
-            );
-            java.util.logging.Logger.getLogger(TESTARDataWriter.class.getName()).log(
-                    java.util.logging.Level.SEVERE,
-                    e.getMessage()
-            );
+                    "Locator evaluation failed for '{" + value + "}'"
+                );
+            java
+                .util.logging.Logger.getLogger(TESTARDataWriter.class.getName())
+                .log(java.util.logging.Level.SEVERE, e.getMessage());
         }
         return value;
     }
@@ -177,13 +198,13 @@ public class TESTARDataWriter {
     private String describeElement(PlaywrightWidget widget) {
         // Get visual element descriptor
         String name = getFirstNonEmpty(
-                widget.get(PlaywrightTags.WebInnerText, "").trim(),
-                widget.get(PlaywrightTags.WebLocatorLabel, "").trim(),
-                widget.get(PlaywrightTags.WebName, ""),
-                widget.get(PlaywrightTags.WebId, ""),
-                widget.get(PlaywrightTags.WebAriaLabel, ""),
-                widget.get(PlaywrightTags.WebPlaceholder, ""),
-                widget.get(PlaywrightTags.WebValue, "")
+            widget.get(PlaywrightTags.WebInnerText, "").trim(),
+            widget.get(PlaywrightTags.WebLocatorLabel, "").trim(),
+            widget.get(PlaywrightTags.WebName, ""),
+            widget.get(PlaywrightTags.WebId, ""),
+            widget.get(PlaywrightTags.WebAriaLabel, ""),
+            widget.get(PlaywrightTags.WebPlaceholder, ""),
+            widget.get(PlaywrightTags.WebValue, "")
         );
         String descriptor = name.replaceAll("\\s+", "");
         if (descriptor.isEmpty()) descriptor = "unnamed";
@@ -208,15 +229,19 @@ public class TESTARDataWriter {
                 break;
             case "select":
                 // Handle <select> elements
-                ElementHandle selectedOption = widget.getElementHandle().querySelector("option[selected]");
+                ElementHandle selectedOption = widget
+                    .getElementHandle()
+                    .querySelector("option[selected]");
                 if (selectedOption == null) {
                     selectedOption = widget.getElementHandle().querySelector("option");
                 }
-                String selectedText = selectedOption != null ? selectedOption.innerText().trim() : "";
+                String selectedText = selectedOption != null
+                    ? selectedOption.innerText().trim()
+                    : "";
                 String selectDescriptor = getFirstNonEmpty(
-                        widget.get(PlaywrightTags.WebName, ""),
-                        widget.get(PlaywrightTags.WebId, ""),
-                        selectedText
+                    widget.get(PlaywrightTags.WebName, ""),
+                    widget.get(PlaywrightTags.WebId, ""),
+                    selectedText
                 );
                 descriptor = selectDescriptor.replaceAll("\\s+", "");
                 if (descriptor.isEmpty()) descriptor = "unnamed";
@@ -252,22 +277,23 @@ public class TESTARDataWriter {
     }
 
     public void addAbstractTestStep(
-            String bddStep,
-            String object,
-            String description,
-            String testAction,
-            String input,
-            String reference
+        String bddStep,
+        String object,
+        String description,
+        String testAction,
+        String input,
+        String reference
     ) {
         String bddStepParsed = bddStep.replaceAll("[\\\\/?:*\"|><]", "_");
         String bddAction = this.reusableStepScenario.getName() + ":".concat(bddStepParsed);
 
         // First, create the abstract test step in the main test case of the test plan
         // Only if it does not already exist
-        boolean exists = mainTestCase.getTestSteps()
-                .stream()
-                .anyMatch(testStep -> bddAction.equals(testStep.getAction()));
-        if(!exists) {
+        boolean exists = mainTestCase
+            .getTestSteps()
+            .stream()
+            .anyMatch(testStep -> bddAction.equals(testStep.getAction()));
+        if (!exists) {
             TestStep abstractTestStep = mainTestCase.addNewStep();
             abstractTestStep.setObject("Execute");
             abstractTestStep.setDescription(bddStep);
@@ -277,7 +303,7 @@ public class TESTARDataWriter {
         // Second, create a test case in the reusable scenario
         // Only if it does not already exist
         TestCase reusableTestCase = reusableStepScenario.getTestCaseByName(bddStepParsed);
-        if(reusableTestCase == null) {
+        if (reusableTestCase == null) {
             reusableTestCase = reusableStepScenario.addTestCase(bddStepParsed);
         }
         setReusableTestCase(reusableTestCase);
@@ -291,11 +317,11 @@ public class TESTARDataWriter {
     }
 
     public void addConcreteTestStep(
-            String object,
-            String description,
-            String testAction,
-            String input,
-            String reference
+        String object,
+        String description,
+        String testAction,
+        String input,
+        String reference
     ) {
         TestStep concreteTestStep = mainTestCase.addNewStep();
         concreteTestStep.setObject(object);
@@ -311,7 +337,10 @@ public class TESTARDataWriter {
         String webPageTitle = state.getPage().title();
         WebORPage webORPage = webOR.addPage(webPageTitle);
         // Add the data of the selected action-element into the OR
-        WebORObject webORObject = addWidgetObject((PlaywrightWidget) action.get(Tags.OriginWidget), page);
+        WebORObject webORObject = addWidgetObject(
+            (PlaywrightWidget) action.get(Tags.OriginWidget),
+            page
+        );
 
         // Create an INGenious action test step
         String object = webORObject.getName();
@@ -320,30 +349,20 @@ public class TESTARDataWriter {
         String input = "";
         String reference = webORPage.getName();
 
-        if(action instanceof PlaywrightClick) {
+        if (action instanceof PlaywrightClick) {
             description = "Click the [<Object>]";
             testAction = "Click";
-        }
-        else if(action instanceof PlaywrightFill) {
+        } else if (action instanceof PlaywrightFill) {
             description = "Enter the value [<Data>] in the Field [<Object>]";
             testAction = "Fill";
-            input = "@" + ((PlaywrightFill)action).getTypedText();
-        }
-        else if(action instanceof PlaywrightSelect) {
+            input = "@" + ((PlaywrightFill) action).getTypedText();
+        } else if (action instanceof PlaywrightSelect) {
             description = "Select item in [<Object>] which has text: [<Data>]";
             testAction = "SelectSingleByText";
-            input = "@" + ((PlaywrightSelect)action).getOptionValue();
-        }
-        else testAction = "Unknown";
+            input = "@" + ((PlaywrightSelect) action).getOptionValue();
+        } else testAction = "Unknown";
 
-        addAbstractTestStep(
-                bddStep,
-                object,
-                description,
-                testAction,
-                input,
-                reference
-        );
+        addAbstractTestStep(bddStep, object, description, testAction, input, reference);
     }
 
     public void addAssertTestStep(String bddStep, PlaywrightState state, String assertText) {
@@ -364,14 +383,7 @@ public class TESTARDataWriter {
         String input = "";
         String reference = webORPage.getName();
 
-        addAbstractTestStep(
-                bddStep,
-                object,
-                description,
-                testAction,
-                input,
-                reference
-        );
+        addAbstractTestStep(bddStep, object, description, testAction, input, reference);
     }
 
     private String describeAssertElement(String assertText) {
@@ -413,10 +425,12 @@ public class TESTARDataWriter {
     }
 
     private String createTestDataInput(String input, String object, String testAction) {
-        if (input == null 
-            || input.trim().isEmpty() 
-            || !input.trim().startsWith("@")
-            || input.trim().substring(1).isEmpty()) {
+        if (
+            input == null ||
+            input.trim().isEmpty() ||
+            !input.trim().startsWith("@") ||
+            input.trim().substring(1).isEmpty()
+        ) {
             return input;
         }
 
@@ -441,7 +455,12 @@ public class TESTARDataWriter {
             testDataModel.loadTableModel();
 
             int rowIndex = findOrCreateDataRow(testDataModel);
-            String columnDataField = findOrCreateColumnDataField(testDataModel, columnDataName, inputValue, rowIndex);
+            String columnDataField = findOrCreateColumnDataField(
+                testDataModel,
+                columnDataName,
+                inputValue,
+                rowIndex
+            );
 
             int colIndex = testDataModel.getColumnIndex(columnDataField);
             if (colIndex >= 0) {
@@ -450,10 +469,13 @@ public class TESTARDataWriter {
 
             return sheetDataName + ":" + columnDataField;
         } catch (Exception ex) {
-            java.util.logging.Logger.getLogger(TESTARDataWriter.class.getName()).log(
+            java
+                .util.logging.Logger.getLogger(TESTARDataWriter.class.getName())
+                .log(
                     java.util.logging.Level.WARNING,
-                    "Failed to associate input with test data; leaving literal input as-is: " + ex.getMessage()
-            );
+                    "Failed to associate input with test data; leaving literal input as-is: " +
+                    ex.getMessage()
+                );
             return input;
         }
     }
@@ -470,11 +492,13 @@ public class TESTARDataWriter {
             Object recordObj = records.get(i);
             if (recordObj instanceof List) {
                 List<?> record = (List<?>) recordObj;
-                if (record.size() >= 4
-                        && scenarioName.equals(String.valueOf(record.get(0)))
-                        && testCaseName.equals(String.valueOf(record.get(1)))
-                        && iteration.equals(String.valueOf(record.get(2)))
-                        && subIteration.equals(String.valueOf(record.get(3)))) {
+                if (
+                    record.size() >= 4 &&
+                    scenarioName.equals(String.valueOf(record.get(0))) &&
+                    testCaseName.equals(String.valueOf(record.get(1))) &&
+                    iteration.equals(String.valueOf(record.get(2))) &&
+                    subIteration.equals(String.valueOf(record.get(3)))
+                ) {
                     return i;
                 }
             }
@@ -486,11 +510,20 @@ public class TESTARDataWriter {
         testDataModel.setValueAt(scenarioName, rowIndex, testDataModel.getColumnIndex("Scenario"));
         testDataModel.setValueAt(testCaseName, rowIndex, testDataModel.getColumnIndex("Flow"));
         testDataModel.setValueAt(iteration, rowIndex, testDataModel.getColumnIndex("Iteration"));
-        testDataModel.setValueAt(subIteration, rowIndex, testDataModel.getColumnIndex("SubIteration"));
+        testDataModel.setValueAt(
+            subIteration,
+            rowIndex,
+            testDataModel.getColumnIndex("SubIteration")
+        );
         return rowIndex;
     }
 
-    private String findOrCreateColumnDataField(TestDataModel testDataModel, String columnDataName, String inputValue, int rowIndex) {
+    private String findOrCreateColumnDataField(
+        TestDataModel testDataModel,
+        String columnDataName,
+        String inputValue,
+        int rowIndex
+    ) {
         String columnDataField = columnDataName;
         int suffix = 2;
 
@@ -503,7 +536,9 @@ public class TESTARDataWriter {
             }
             // If the column data field exists in the row, check the input value
             int colIndex = testDataModel.getColumnIndex(columnDataField);
-            String existing = Objects.toString(testDataModel.getValueAt(rowIndex, colIndex), "").trim();
+            String existing = Objects
+                .toString(testDataModel.getValueAt(rowIndex, colIndex), "")
+                .trim();
             // If the input value is empty or is the same, just return the column data field
             // E.g., return an existing column data field (username[input]_Fill == john)
             if (existing.isEmpty() || existing.equals(inputValue)) {
@@ -514,5 +549,4 @@ public class TESTARDataWriter {
             columnDataField = columnDataName + "_" + suffix++;
         }
     }
-
 }

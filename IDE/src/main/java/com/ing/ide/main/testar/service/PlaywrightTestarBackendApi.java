@@ -8,15 +8,14 @@ import com.ing.ide.main.testar.service.action.ActionService;
 import com.ing.ide.main.testar.service.action.PlaywrightActionService;
 import com.ing.ide.main.testar.service.assertion.AssertionService;
 import com.ing.ide.main.testar.service.assertion.PlaywrightAssertionService;
-import com.ing.ide.main.testar.service.persistence.PersistenceService;
 import com.ing.ide.main.testar.service.persistence.INGeniousPersistenceService;
-import com.ing.ide.main.testar.service.session.SessionService;
+import com.ing.ide.main.testar.service.persistence.PersistenceService;
 import com.ing.ide.main.testar.service.session.PlaywrightSessionService;
-import com.ing.ide.main.testar.service.state.StateService;
+import com.ing.ide.main.testar.service.session.SessionService;
 import com.ing.ide.main.testar.service.state.PlaywrightStateService;
+import com.ing.ide.main.testar.service.state.StateService;
 import com.ing.ingenious.api.contract.testar.TestarBackendApi;
 import com.ing.ingenious.api.contract.testar.TestarResult;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,7 +26,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public class PlaywrightTestarBackendApi implements TestarBackendApi {
-
     private SessionContext context;
     private PersistenceService persistenceService;
     private SessionService sessionService;
@@ -37,7 +35,13 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
     private BddStepTracker bddStepTracker;
 
     @Override
-    public TestarResult startSession(String projectPath, String bddScenarioName, String bddInstructions, String bddScenarioSource, String url) {
+    public TestarResult startSession(
+        String projectPath,
+        String bddScenarioName,
+        String bddInstructions,
+        String bddScenarioSource,
+        String url
+    ) {
         try {
             Project project = new Project(projectPath);
             TESTARDataWriter dataWriter = new TESTARDataWriter(project, bddScenarioName);
@@ -52,7 +56,10 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
             this.assertionService = new PlaywrightAssertionService(persistenceService);
             this.bddStepTracker = createBddStepTracker(bddInstructions);
         } catch (Exception e) {
-            return TestarResult.failure("error", "Failed to initialize TESTAR backend: " + e.getMessage());
+            return TestarResult.failure(
+                "error",
+                "Failed to initialize TESTAR backend: " + e.getMessage()
+            );
         }
 
         String initialBddStep = resolveInitialBddStep(url);
@@ -69,9 +76,11 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
 
         boolean active = context.getSystem() != null && context.getState() != null;
         return TestarResult.success(
-                active ? "active" : "initialized",
-                active ? "TESTAR session is active." : "TESTAR backend is initialized but no active browser session exists.",
-                buildProgressPayload()
+            active ? "active" : "initialized",
+            active
+                ? "TESTAR session is active."
+                : "TESTAR backend is initialized but no active browser session exists.",
+            buildProgressPayload()
         );
     }
 
@@ -116,7 +125,10 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
             String payload = "imagePath: " + imagePath;
             return TestarResult.success("ok", "State image written.", payload);
         } catch (IllegalArgumentException | IOException exception) {
-            return TestarResult.failure("error", "Failed to persist state image: " + exception.getMessage());
+            return TestarResult.failure(
+                "error",
+                "Failed to persist state image: " + exception.getMessage()
+            );
         }
     }
 
@@ -132,7 +144,11 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
             return toResult(validation, "error");
         }
 
-        Feedback result = actionService.executeClickAction(context, normalizedBddStep(bddStep), cssSelector);
+        Feedback result = actionService.executeClickAction(
+            context,
+            normalizedBddStep(bddStep),
+            cssSelector
+        );
         recordIfSuccess(bddStep, result);
         return toResult(result, "ok");
     }
@@ -144,19 +160,33 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
             return toResult(validation, "error");
         }
 
-        Feedback result = actionService.executeFillAction(context, normalizedBddStep(bddStep), cssSelector, fillText);
+        Feedback result = actionService.executeFillAction(
+            context,
+            normalizedBddStep(bddStep),
+            cssSelector,
+            fillText
+        );
         recordIfSuccess(bddStep, result);
         return toResult(result, "ok");
     }
 
     @Override
-    public TestarResult executeSelectAction(String bddStep, String cssSelector, String optionValue) {
+    public TestarResult executeSelectAction(
+        String bddStep,
+        String cssSelector,
+        String optionValue
+    ) {
         Feedback validation = validateBddStep(bddStep);
         if (validation != null) {
             return toResult(validation, "error");
         }
 
-        Feedback result = actionService.executeSelectAction(context, normalizedBddStep(bddStep), cssSelector, optionValue);
+        Feedback result = actionService.executeSelectAction(
+            context,
+            normalizedBddStep(bddStep),
+            cssSelector,
+            optionValue
+        );
         recordIfSuccess(bddStep, result);
         return toResult(result, "ok");
     }
@@ -165,9 +195,9 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
     public TestarResult getExecutedActions() {
         if (context != null && !context.getExecutedActionEntries().isEmpty()) {
             return TestarResult.success(
-                    "ok",
-                    "BDD-aware action history.",
-                    buildBddAwareActionHistory()
+                "ok",
+                "BDD-aware action history.",
+                buildBddAwareActionHistory()
             );
         }
 
@@ -181,7 +211,11 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
             return toResult(validation, "error");
         }
 
-        Feedback result = assertionService.addStepAssert(context, normalizedBddStep(bddStep), assertText);
+        Feedback result = assertionService.addStepAssert(
+            context,
+            normalizedBddStep(bddStep),
+            assertText
+        );
         recordIfSuccess(bddStep, result);
         return toResult(result, "ok");
     }
@@ -248,11 +282,19 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         }
 
         StringBuilder payload = new StringBuilder();
-        if (context != null && context.getBddScenarioName() != null && !context.getBddScenarioName().isEmpty()) {
+        if (
+            context != null &&
+            context.getBddScenarioName() != null &&
+            !context.getBddScenarioName().isEmpty()
+        ) {
             payload.append("scenarioTitle: ").append(context.getBddScenarioName());
             payload.append('\n');
         }
-        if (context != null && context.getBddScenarioSource() != null && !context.getBddScenarioSource().isEmpty()) {
+        if (
+            context != null &&
+            context.getBddScenarioSource() != null &&
+            !context.getBddScenarioSource().isEmpty()
+        ) {
             payload.append("scenarioSource: ").append(context.getBddScenarioSource());
             payload.append('\n');
         }
@@ -290,7 +332,9 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         }
 
         int imageIndex = context.nextStateImageCounter();
-        Path imagePath = context.getRuntimeTempDir().resolve(String.format("state-%03d.png", imageIndex));
+        Path imagePath = context
+            .getRuntimeTempDir()
+            .resolve(String.format("state-%03d.png", imageIndex));
         Files.write(imagePath, screenshotBytes);
         return imagePath.toString();
     }
@@ -304,8 +348,8 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         for (int index = 0; index < entries.size(); index++) {
             SessionContext.ExecutedActionEntry entry = entries.get(index);
             String bddStep = entry.getBddStep() != null && !entry.getBddStep().isEmpty()
-                    ? entry.getBddStep()
-                    : "(no bdd step)";
+                ? entry.getBddStep()
+                : "(no bdd step)";
             int stepCounter = perStepCounters.getOrDefault(bddStep, 0) + 1;
             perStepCounters.put(bddStep, stepCounter);
 

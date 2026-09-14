@@ -23,7 +23,6 @@ import com.microsoft.playwright.FrameLocator;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.AriaRole;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,7 +35,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class AutomationObject implements AutomationObjectApi {
-
     private static final Logger LOG = Logger.getLogger(AutomationObject.class.getName());
 
     public AutomationObject(CommandControl cc) {
@@ -185,7 +183,11 @@ public class AutomationObject implements AutomationObjectApi {
                     return locator;
                 } else {
                     int count = (locator != null) ? locator.count() : -1;
-                    String msg = "Locator did not match exactly one element (matched " + count + "): " + locator;
+                    String msg =
+                        "Locator did not match exactly one element (matched " +
+                        count +
+                        "): " +
+                        locator;
                     LOG.log(Level.WARNING, msg);
                 }
             } catch (Exception e) {
@@ -1105,7 +1107,11 @@ public class AutomationObject implements AutomationObjectApi {
                     break;
                 }
             } catch (Exception e) {
-                String msg = String.format("Failed to create locator using [%s] with value [%s]", tag, value);
+                String msg = String.format(
+                    "Failed to create locator using [%s] with value [%s]",
+                    tag,
+                    value
+                );
                 LOG.log(Level.SEVERE, msg, e);
             }
         }

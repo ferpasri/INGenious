@@ -8,14 +8,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class TestarBddGoalLoader {
-
     private static final String SCENARIO_PREFIX = "Scenario:";
 
-    private TestarBddGoalLoader() {
-    }
+    private TestarBddGoalLoader() {}
 
-    public static ResolvedBddGoal resolve(String bddGoalId, String bddFilePath, String fallbackScenarioName) {
-        if (bddGoalId != null && !bddGoalId.trim().isEmpty() && bddFilePath != null && !bddFilePath.trim().isEmpty()) {
+    public static ResolvedBddGoal resolve(
+        String bddGoalId,
+        String bddFilePath,
+        String fallbackScenarioName
+    ) {
+        if (
+            bddGoalId != null &&
+            !bddGoalId.trim().isEmpty() &&
+            bddFilePath != null &&
+            !bddFilePath.trim().isEmpty()
+        ) {
             throw new IllegalArgumentException("Use either --bdd-goal or --bdd-file, not both.");
         }
 
@@ -39,7 +46,10 @@ public final class TestarBddGoalLoader {
         try {
             lines = Files.readAllLines(path, StandardCharsets.UTF_8);
         } catch (IOException exception) {
-            throw new IllegalArgumentException("Unable to read BDD scenario file: " + path, exception);
+            throw new IllegalArgumentException(
+                "Unable to read BDD scenario file: " + path,
+                exception
+            );
         }
 
         String scenarioName = "";
@@ -60,21 +70,19 @@ public final class TestarBddGoalLoader {
         }
 
         if (scenarioName.isEmpty()) {
-            scenarioName = fallbackScenarioName != null && !fallbackScenarioName.trim().isEmpty()
+            scenarioName =
+                fallbackScenarioName != null && !fallbackScenarioName.trim().isEmpty()
                     ? fallbackScenarioName.trim()
                     : deriveScenarioNameFromFile(path);
         }
 
-        return new ResolvedBddGoal(
-                scenarioName,
-                String.join("\n", bddSteps),
-                path
-        );
+        return new ResolvedBddGoal(scenarioName, String.join("\n", bddSteps), path);
     }
 
     private static Path resolveGoalPath(String bddGoalId) {
-        String normalizedGoalId = bddGoalId.replace('/', java.io.File.separatorChar)
-                .replace('\\', java.io.File.separatorChar);
+        String normalizedGoalId = bddGoalId
+            .replace('/', java.io.File.separatorChar)
+            .replace('\\', java.io.File.separatorChar);
         if (!normalizedGoalId.endsWith(".md")) {
             normalizedGoalId = normalizedGoalId + ".md";
         }
@@ -82,8 +90,8 @@ public final class TestarBddGoalLoader {
         Path root = findBddGoalsRoot(Path.of(System.getProperty("user.dir")));
         if (root == null) {
             throw new IllegalArgumentException(
-                    "Unable to locate '.agents/bdd_goals' in the current runtime root. "
-                            + "Package '.agents/bdd_goals' into the release or run from a workspace root that contains it."
+                "Unable to locate '.agents/bdd_goals' in the current runtime root. " +
+                "Package '.agents/bdd_goals' into the release or run from a workspace root that contains it."
             );
         }
 
@@ -130,15 +138,14 @@ public final class TestarBddGoalLoader {
         }
 
         return text
-                .replace('\u2018', '\'')
-                .replace('\u2019', '\'')
-                .replace('\u201C', '\'')
-                .replace('\u201D', '\'')
-                .trim();
+            .replace('\u2018', '\'')
+            .replace('\u2019', '\'')
+            .replace('\u201C', '\'')
+            .replace('\u201D', '\'')
+            .trim();
     }
 
     public static final class ResolvedBddGoal {
-
         private final String scenarioName;
         private final String bddInstructions;
         private final Path sourcePath;

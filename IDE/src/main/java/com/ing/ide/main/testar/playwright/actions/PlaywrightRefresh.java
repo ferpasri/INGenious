@@ -6,7 +6,6 @@ import org.testar.monkey.alayer.*;
 import org.testar.monkey.alayer.exceptions.ActionFailedException;
 
 public class PlaywrightRefresh extends TaggableBase implements Action {
-
     private final Page page;
 
     public PlaywrightRefresh(PlaywrightState state) {

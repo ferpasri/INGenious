@@ -24,7 +24,10 @@ public final class TestarCliDaemonClient {
             }
         }
 
-        throw new IllegalStateException("Unable to communicate with TESTAR CLI daemon", lastException);
+        throw new IllegalStateException(
+            "Unable to communicate with TESTAR CLI daemon",
+            lastException
+        );
     }
 
     private void ensureDaemonRunning() {
@@ -47,8 +50,8 @@ public final class TestarCliDaemonClient {
     private boolean isDaemonReachable() {
         try (Socket socket = new Socket()) {
             socket.connect(
-                    new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
-                    200
+                new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
+                200
             );
             return true;
         } catch (IOException exception) {
@@ -63,13 +66,13 @@ public final class TestarCliDaemonClient {
         Path logFile = Path.of(appRoot, TestarCliDaemonConfig.LOG_FILE_NAME);
 
         ProcessBuilder builder = new ProcessBuilder(
-                javaExecutable,
-                "-Dingenious.testar.daemon=true",
-                "-cp",
-                classPath,
-                "com.ing.engine.core.Control",
-                "testar",
-                "daemon"
+            javaExecutable,
+            "-Dingenious.testar.daemon=true",
+            "-cp",
+            classPath,
+            "com.ing.engine.core.Control",
+            "testar",
+            "daemon"
         );
         builder.directory(new File(appRoot));
         builder.redirectErrorStream(true);
@@ -78,7 +81,10 @@ public final class TestarCliDaemonClient {
         try {
             builder.start();
         } catch (IOException exception) {
-            throw new IllegalStateException("Unable to start TESTAR CLI daemon: " + exception.getMessage(), exception);
+            throw new IllegalStateException(
+                "Unable to start TESTAR CLI daemon: " + exception.getMessage(),
+                exception
+            );
         }
     }
 
@@ -92,12 +98,14 @@ public final class TestarCliDaemonClient {
     private TestarCliResponse sendOnce(TestarCliRequest request) throws IOException {
         try (Socket socket = new Socket()) {
             socket.connect(
-                    new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
-                    TestarCliDaemonConfig.CONNECT_TIMEOUT_MS
+                new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
+                TestarCliDaemonConfig.CONNECT_TIMEOUT_MS
             );
 
-            try (DataOutputStream output = new DataOutputStream(socket.getOutputStream());
-                 DataInputStream input = new DataInputStream(socket.getInputStream())) {
+            try (
+                DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+                DataInputStream input = new DataInputStream(socket.getInputStream())
+            ) {
                 output.writeUTF(request.getCommand());
                 output.writeInt(request.getArguments().size());
                 for (String argument : request.getArguments()) {

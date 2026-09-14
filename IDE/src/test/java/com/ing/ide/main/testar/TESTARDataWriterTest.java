@@ -13,8 +13,8 @@ import com.ing.datalib.component.TestStep;
 import com.ing.datalib.or.common.ObjectGroup;
 import com.ing.datalib.or.web.WebORObject;
 import com.ing.datalib.or.web.WebORPage;
-import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
 import com.ing.ide.main.testar.playwright.system.PlaywrightState;
+import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
@@ -30,7 +30,6 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 public class TESTARDataWriterTest {
-
     private Path tempDir;
 
     @AfterMethod
@@ -39,15 +38,18 @@ public class TESTARDataWriterTest {
             return;
         }
 
-        Files.walk(tempDir)
-                .sorted(Comparator.reverseOrder())
-                .forEach(path -> {
+        Files
+            .walk(tempDir)
+            .sorted(Comparator.reverseOrder())
+            .forEach(
+                path -> {
                     try {
                         Files.deleteIfExists(path);
                     } catch (IOException exception) {
                         throw new RuntimeException(exception);
                     }
-                });
+                }
+            );
     }
 
     @Test
@@ -55,18 +57,18 @@ public class TESTARDataWriterTest {
         TESTARDataWriter writer = createWriter();
         Page page = mockPage("Request Loan");
         PlaywrightWidget widget = mockWidget(
-                "Apply Now",
-                "button",
-                "",
-                "",
-                "button",
-                "button",
-                "//button[@id='apply']",
-                "#apply",
-                "",
-                "",
-                "Apply title",
-                "apply-button"
+            "Apply Now",
+            "button",
+            "",
+            "",
+            "button",
+            "button",
+            "//button[@id='apply']",
+            "#apply",
+            "",
+            "",
+            "Apply title",
+            "apply-button"
         );
 
         WebORObject object = writer.addWidgetObject(widget, page);
@@ -89,39 +91,39 @@ public class TESTARDataWriterTest {
         Page page = mockPage("Request Loan");
 
         WebORObject firstObject = writer.addWidgetObject(
-                mockWidget(
-                        "Apply Now",
-                        "button",
-                        "",
-                        "",
-                        "button",
-                        "button",
-                        "//button[@id='apply']",
-                        "#apply",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "Apply Now",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='apply']",
+                "#apply",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         WebORObject secondObject = writer.addWidgetObject(
-                mockWidget(
-                        "Cancel",
-                        "button",
-                        "",
-                        "",
-                        "button",
-                        "button",
-                        "//button[@id='cancel']",
-                        "#cancel",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "Cancel",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='cancel']",
+                "#cancel",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         WebORPage firstPage = (WebORPage) firstObject.getParent().getParent();
@@ -138,18 +140,18 @@ public class TESTARDataWriterTest {
         TESTARDataWriter writer = createWriter();
         Page page = mockPage("Request Loan");
         PlaywrightWidget widget = mockWidget(
-                "Apply Now",
-                "button",
-                "",
-                "",
-                "button",
-                "button",
-                "//button[@id='apply']",
-                "#apply",
-                "",
-                "",
-                "",
-                ""
+            "Apply Now",
+            "button",
+            "",
+            "",
+            "button",
+            "button",
+            "//button[@id='apply']",
+            "#apply",
+            "",
+            "",
+            "",
+            ""
         );
 
         WebORObject firstObject = writer.addWidgetObject(widget, page);
@@ -170,21 +172,21 @@ public class TESTARDataWriterTest {
         PlaywrightState state = mockState(page);
 
         WebORObject widgetObject = writer.addWidgetObject(
-                mockWidget(
-                        "Log In",
-                        "input",
-                        "submit",
-                        "",
-                        "",
-                        "",
-                        "//input[@type='submit']",
-                        "[type='submit']",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "Log In",
+                "input",
+                "submit",
+                "",
+                "",
+                "",
+                "//input[@type='submit']",
+                "[type='submit']",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         writer.addAssertTestStep("Given the page is open", state, "Customer Login");
@@ -193,9 +195,13 @@ public class TESTARDataWriterTest {
 
         assertThat(webORPage.getObjectGroups()).hasSize(2);
         assertThat(webORPage.getObjectGroupByName("assertCustomerL[text]")).isNotNull();
-        assertThat(webORPage.getObjectGroupByName("assertCustomerL[text]")
-                .getObjectByName("assertCustomerL[text]")
-                .getAttributeByName("Text")).isEqualTo("Customer Login");
+        assertThat(
+                webORPage
+                    .getObjectGroupByName("assertCustomerL[text]")
+                    .getObjectByName("assertCustomerL[text]")
+                    .getAttributeByName("Text")
+            )
+            .isEqualTo("Customer Login");
     }
 
     @Test
@@ -206,21 +212,21 @@ public class TESTARDataWriterTest {
 
         writer.addAssertTestStep("Given the page is open", state, "Customer Login");
         WebORObject widgetObject = writer.addWidgetObject(
-                mockWidget(
-                        "username",
-                        "input",
-                        "text",
-                        "",
-                        "",
-                        "",
-                        "//input[@type='text']",
-                        "[type='text']",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "username",
+                "input",
+                "text",
+                "",
+                "",
+                "",
+                "//input[@type='text']",
+                "[type='text']",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         WebORPage webORPage = (WebORPage) widgetObject.getParent().getParent();
@@ -243,18 +249,21 @@ public class TESTARDataWriterTest {
         when(project.getScenarioByName("BDD-MCP_scenario")).thenReturn(bddScenario);
         when(project.getReusableScenarioByName(anyString())).thenReturn(null);
         when(project.addReusableScenario(anyString())).thenReturn(reusableScenario);
-        when(bddScenario.addTestCase(anyString())).thenAnswer(invocation ->
-                createMockTestCase(invocation.getArgument(0, String.class))
-        );
-        when(reusableScenario.getTestCaseByName(anyString())).thenAnswer(invocation ->
-                reusableTestCases.get(invocation.getArgument(0, String.class))
-        );
-        when(reusableScenario.addTestCase(anyString())).thenAnswer(invocation -> {
-            String testCaseName = invocation.getArgument(0, String.class);
-            TestCase testCase = createMockTestCase(testCaseName);
-            reusableTestCases.put(testCaseName, testCase);
-            return testCase;
-        });
+        when(bddScenario.addTestCase(anyString()))
+            .thenAnswer(invocation -> createMockTestCase(invocation.getArgument(0, String.class)));
+        when(reusableScenario.getTestCaseByName(anyString()))
+            .thenAnswer(
+                invocation -> reusableTestCases.get(invocation.getArgument(0, String.class))
+            );
+        when(reusableScenario.addTestCase(anyString()))
+            .thenAnswer(
+                invocation -> {
+                    String testCaseName = invocation.getArgument(0, String.class);
+                    TestCase testCase = createMockTestCase(testCaseName);
+                    reusableTestCases.put(testCaseName, testCase);
+                    return testCase;
+                }
+            );
 
         return new TESTARDataWriter(project, "Loan Scenario");
     }
@@ -265,11 +274,14 @@ public class TESTARDataWriterTest {
 
         when(testCase.getName()).thenReturn(testCaseName);
         when(testCase.getTestSteps()).thenReturn(testSteps);
-        when(testCase.addNewStep()).thenAnswer(invocation -> {
-            TestStep testStep = mock(TestStep.class);
-            testSteps.add(testStep);
-            return testStep;
-        });
+        when(testCase.addNewStep())
+            .thenAnswer(
+                invocation -> {
+                    TestStep testStep = mock(TestStep.class);
+                    testSteps.add(testStep);
+                    return testStep;
+                }
+            );
 
         return testCase;
     }
@@ -293,18 +305,18 @@ public class TESTARDataWriterTest {
     }
 
     private PlaywrightWidget mockWidget(
-            String innerText,
-            String tagName,
-            String type,
-            String locatorText,
-            String role,
-            String locatorRole,
-            String xpath,
-            String css,
-            String placeholder,
-            String altText,
-            String title,
-            String testId
+        String innerText,
+        String tagName,
+        String type,
+        String locatorText,
+        String role,
+        String locatorRole,
+        String xpath,
+        String css,
+        String placeholder,
+        String altText,
+        String title,
+        String testId
     ) {
         PlaywrightWidget widget = mock(PlaywrightWidget.class);
 

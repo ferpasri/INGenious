@@ -2,7 +2,6 @@ package com.ing.ide.main.testar.mcp.metrics;
 
 import com.ing.ide.main.testar.mcp.BddStepTracker;
 import com.ing.ide.main.testar.mcp.McpAgentSettings;
-
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -21,9 +20,9 @@ import java.util.Map;
  * </p>
  */
 public class LlmRunMetrics {
-
-    private static final DateTimeFormatter TIMESTAMP_FORMAT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter
+        .ofPattern("yyyy-MM-dd_HH-mm-ss")
+        .withZone(ZoneId.systemDefault());
 
     private final String runName;
     private final String projectName;
@@ -54,21 +53,25 @@ public class LlmRunMetrics {
     private List<String> executedBddSteps = Collections.emptyList();
     private String latestExecutedBddStep = "";
 
-    public LlmRunMetrics(String runName,
-                         String projectName,
-                         String projectLocation,
-                         McpAgentSettings settings,
-                         String providerName,
-                         String modelName) {
+    public LlmRunMetrics(
+        String runName,
+        String projectName,
+        String projectLocation,
+        McpAgentSettings settings,
+        String providerName,
+        String modelName
+    ) {
         this.runName = runName != null ? runName : "";
         this.projectName = projectName != null ? projectName : "";
         this.projectLocation = projectLocation != null ? projectLocation : "";
         this.providerName = providerName != null ? providerName : "";
         this.modelName = modelName != null ? modelName : "";
-        this.reasoningLevel = settings != null && settings.reasoningLevel != null ? settings.reasoningLevel : "none";
+        this.reasoningLevel =
+            settings != null && settings.reasoningLevel != null ? settings.reasoningLevel : "none";
         this.visionEnabled = settings != null && settings.vision != null && settings.vision;
         this.apiUrl = settings != null && settings.apiUrl != null ? settings.apiUrl : "";
-        this.scenarioName = settings != null && settings.bddScenarioName != null ? settings.bddScenarioName : "";
+        this.scenarioName =
+            settings != null && settings.bddScenarioName != null ? settings.bddScenarioName : "";
         this.startedAt = OffsetDateTime.now().toString();
     }
 
@@ -100,15 +103,18 @@ public class LlmRunMetrics {
         invalidActions++;
     }
 
-    public void addInvalidActionDetail(String toolName,
-                                       String bddStep,
-                                       String selector,
-                                       String value,
-                                       String reasonCode,
-                                       String reasonSummary,
-                                       String feedbackMessage) {
+    public void addInvalidActionDetail(
+        String toolName,
+        String bddStep,
+        String selector,
+        String value,
+        String reasonCode,
+        String reasonSummary,
+        String feedbackMessage
+    ) {
         invalidActions++;
-        invalidActionDetails.add(new LlmInvalidActionDetail(
+        invalidActionDetails.add(
+            new LlmInvalidActionDetail(
                 invalidActionDetails.size() + 1,
                 toolName,
                 bddStep,
@@ -117,7 +123,8 @@ public class LlmRunMetrics {
                 reasonCode,
                 reasonSummary,
                 feedbackMessage
-        ));
+            )
+        );
         invalidActionReasonCounts.merge(reasonCode, 1, Integer::sum);
         invalidActionsByTool.merge(toolName != null ? toolName : "", 1, Integer::sum);
     }

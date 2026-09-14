@@ -2,7 +2,6 @@ package com.ing.ide.main.testar.mcp.metrics;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ing.engine.constants.AppResourcePath;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -19,25 +18,31 @@ import java.util.Map;
  * Generate a standalone MCP metrics dashboard for benchmark-style run review.
  */
 public class LlmMetricsDashboardWriter {
-
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     private static final String DASHBOARD_TEMPLATE_HTML = "mcp-dashboard.html";
     private static final String DASHBOARD_CSS = "mcp-dashboard.css";
     private static final String DASHBOARD_JS = "mcp-dashboard.js";
 
-    public void writeDashboard(Path metricsRoot, List<Map<String, Object>> allRuns) throws IOException {
+    public void writeDashboard(Path metricsRoot, List<Map<String, Object>> allRuns)
+        throws IOException {
         Files.createDirectories(metricsRoot);
 
         Map<String, Object> dashboardData = buildDashboardData(allRuns);
-        String jsPayload = "window.MCP_METRICS_DATA = " + JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(dashboardData) + ";";
+        String jsPayload =
+            "window.MCP_METRICS_DATA = " +
+            JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(dashboardData) +
+            ";";
 
         Files.writeString(metricsRoot.resolve("mcp_metrics.js"), jsPayload, StandardCharsets.UTF_8);
         copyDashboardAssets(metricsRoot);
     }
 
     private void copyDashboardAssets(Path metricsRoot) throws IOException {
-        Path htmlSource = Paths.get(AppResourcePath.getReportTemplatePath(), DASHBOARD_TEMPLATE_HTML);
+        Path htmlSource = Paths.get(
+            AppResourcePath.getReportTemplatePath(),
+            DASHBOARD_TEMPLATE_HTML
+        );
         Path cssSource = Paths.get(AppResourcePath.getReportResourcePath(), "css", DASHBOARD_CSS);
         Path jsSource = Paths.get(AppResourcePath.getReportResourcePath(), "js", DASHBOARD_JS);
 
@@ -47,9 +52,21 @@ public class LlmMetricsDashboardWriter {
         Files.createDirectories(cssTargetDir);
         Files.createDirectories(jsTargetDir);
 
-        Files.copy(htmlSource, metricsRoot.resolve("dashboard.html"), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(cssSource, cssTargetDir.resolve(DASHBOARD_CSS), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(jsSource, jsTargetDir.resolve(DASHBOARD_JS), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(
+            htmlSource,
+            metricsRoot.resolve("dashboard.html"),
+            StandardCopyOption.REPLACE_EXISTING
+        );
+        Files.copy(
+            cssSource,
+            cssTargetDir.resolve(DASHBOARD_CSS),
+            StandardCopyOption.REPLACE_EXISTING
+        );
+        Files.copy(
+            jsSource,
+            jsTargetDir.resolve(DASHBOARD_JS),
+            StandardCopyOption.REPLACE_EXISTING
+        );
     }
 
     private Map<String, Object> buildDashboardData(List<Map<String, Object>> allRuns) {
@@ -61,16 +78,26 @@ public class LlmMetricsDashboardWriter {
         Map<String, Integer> invalidToolCounts = new LinkedHashMap<>();
 
         for (Map<String, Object> run : runs) {
-            String modelKey = String.valueOf(run.get("providerName"))
-                    + "||" + String.valueOf(run.get("modelName"))
-                    + "||" + String.valueOf(run.get("reasoningLevel"))
-                    + "||" + String.valueOf(run.get("visionEnabled"));
-            byModel.computeIfAbsent(modelKey, key -> new ModelAggregate(
-                    String.valueOf(run.get("providerName")),
-                    String.valueOf(run.get("modelName")),
-                    String.valueOf(run.get("reasoningLevel")),
-                    Boolean.TRUE.equals(run.get("visionEnabled"))
-            )).accept(run);
+            String modelKey =
+                String.valueOf(run.get("providerName")) +
+                "||" +
+                String.valueOf(run.get("modelName")) +
+                "||" +
+                String.valueOf(run.get("reasoningLevel")) +
+                "||" +
+                String.valueOf(run.get("visionEnabled"));
+            byModel
+                .computeIfAbsent(
+                    modelKey,
+                    key ->
+                        new ModelAggregate(
+                            String.valueOf(run.get("providerName")),
+                            String.valueOf(run.get("modelName")),
+                            String.valueOf(run.get("reasoningLevel")),
+                            Boolean.TRUE.equals(run.get("visionEnabled"))
+                        )
+                )
+                .accept(run);
 
             mergeCounts(invalidReasonCounts, mapValue(run.get("invalidActionReasonCounts")));
             mergeCounts(invalidToolCounts, mapValue(run.get("invalidActionsByTool")));
@@ -101,7 +128,9 @@ public class LlmMetricsDashboardWriter {
         }
 
         Map<String, Integer> result = new LinkedHashMap<>();
-        ((Map<?, ?>) value).forEach((key, count) -> result.put(String.valueOf(key), intValue(count)));
+        ((Map<?, ?>) value).forEach(
+                (key, count) -> result.put(String.valueOf(key), intValue(count))
+            );
         return result;
     }
 
@@ -151,7 +180,6 @@ public class LlmMetricsDashboardWriter {
     }
 
     private final class ModelAggregate {
-
         private final String providerName;
         private final String modelName;
         private final String reasoningLevel;
@@ -165,7 +193,12 @@ public class LlmMetricsDashboardWriter {
         private long totalInvalidActions;
         private long totalSteps;
 
-        private ModelAggregate(String providerName, String modelName, String reasoningLevel, boolean visionEnabled) {
+        private ModelAggregate(
+            String providerName,
+            String modelName,
+            String reasoningLevel,
+            boolean visionEnabled
+        ) {
             this.providerName = providerName;
             this.modelName = modelName;
             this.reasoningLevel = reasoningLevel;
@@ -196,7 +229,10 @@ public class LlmMetricsDashboardWriter {
             map.put("successRate", rate(successfulRuns, totalRuns));
             map.put("avgLatencyMs", totalRuns == 0 ? 0 : totalLatencyMs / totalRuns);
             map.put("avgTokens", totalRuns == 0 ? 0 : totalTokens / totalRuns);
-            map.put("avgInvalidActions", totalRuns == 0 ? 0.0d : (double) totalInvalidActions / totalRuns);
+            map.put(
+                "avgInvalidActions",
+                totalRuns == 0 ? 0.0d : (double) totalInvalidActions / totalRuns
+            );
             map.put("avgSteps", totalRuns == 0 ? 0.0d : (double) totalSteps / totalRuns);
             map.put("invalidReasonCounts", invalidReasonCounts);
             map.put("invalidActionsByTool", invalidActionsByTool);

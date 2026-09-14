@@ -1,7 +1,6 @@
 package com.ing.ide.main.testar.mcp.provider;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -27,7 +26,6 @@ import java.util.logging.Logger;
  * </p>
  */
 public class OllamaProvider implements LlmProvider {
-
     private static final Logger LOGGER = Logger.getLogger(OllamaProvider.class.getName());
 
     private final String apiUrl;
@@ -40,13 +38,10 @@ public class OllamaProvider implements LlmProvider {
     private volatile int lastTokenUsage = 0;
 
     public OllamaProvider(String apiUrl, String model) {
-        this.apiUrl = apiUrl != null && !apiUrl.isBlank()
-                ? apiUrl
-                : "http://localhost:11434/api/chat";
+        this.apiUrl =
+            apiUrl != null && !apiUrl.isBlank() ? apiUrl : "http://localhost:11434/api/chat";
         this.model = model != null && !model.isBlank() ? model : "qwen3:8b";
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(30))
-                .build();
+        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
         this.objectMapper = new ObjectMapper();
     }
 
@@ -54,9 +49,12 @@ public class OllamaProvider implements LlmProvider {
      * Executes one provider turn using the Ollama chat endpoint.
      */
     @Override
-    public LlmProviderResponse executePrompt(String systemPrompt,
-                                             List<Map<String, Object>> input,
-                                             boolean visionRequested) throws LlmProviderException {
+    public LlmProviderResponse executePrompt(
+        String systemPrompt,
+        List<Map<String, Object>> input,
+        boolean visionRequested
+    )
+        throws LlmProviderException {
         try {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", model);
@@ -67,27 +65,38 @@ public class OllamaProvider implements LlmProvider {
             }
 
             String requestJson = objectMapper.writeValueAsString(requestBody);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(apiUrl))
-                    .header("Content-Type", "application/json")
-                    .timeout(Duration.ofMinutes(3))
-                    .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                    .build();
+            HttpRequest request = HttpRequest
+                .newBuilder()
+                .uri(URI.create(apiUrl))
+                .header("Content-Type", "application/json")
+                .timeout(Duration.ofMinutes(3))
+                .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+                .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(
+                request,
+                HttpResponse.BodyHandlers.ofString()
+            );
             if (response.statusCode() >= 400) {
-                LOGGER.log(Level.SEVERE, "Ollama API error. Status: {0}, Body: {1}",
-                        new Object[] { response.statusCode(), response.body() });
-                throw new LlmProviderException("Ollama API error: " + response.statusCode(),
-                        response.statusCode(), false, 0L);
+                LOGGER.log(
+                    Level.SEVERE,
+                    "Ollama API error. Status: {0}, Body: {1}",
+                    new Object[] { response.statusCode(), response.body() }
+                );
+                throw new LlmProviderException(
+                    "Ollama API error: " + response.statusCode(),
+                    response.statusCode(),
+                    false,
+                    0L
+                );
             }
 
             Map<?, ?> parsed = objectMapper.readValue(response.body(), Map.class);
             logTokenUsage(parsed);
 
             Map<?, ?> message = parsed.get("message") instanceof Map<?, ?>
-                    ? (Map<?, ?>) parsed.get("message")
-                    : null;
+                ? (Map<?, ?>) parsed.get("message")
+                : null;
 
             return toActionResponse(message);
         } catch (LlmProviderException exception) {
@@ -126,7 +135,10 @@ public class OllamaProvider implements LlmProvider {
         return lastTokenUsage;
     }
 
-    private List<Map<String, Object>> buildMessages(String systemPrompt, List<Map<String, Object>> input) {
+    private List<Map<String, Object>> buildMessages(
+        String systemPrompt,
+        List<Map<String, Object>> input
+    ) {
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(Map.of("role", "system", "content", systemPrompt));
 
@@ -157,11 +169,7 @@ public class OllamaProvider implements LlmProvider {
     private Map<String, Object> createToolMessage(Map<String, Object> item) {
         String callId = asText(item.get("call_id"));
         String toolName = toolNameByCallId.getOrDefault(callId, "unknown_tool");
-        return Map.of(
-                "role", "tool",
-                "tool_name", toolName,
-                "content", asText(item.get("output"))
-        );
+        return Map.of("role", "tool", "tool_name", toolName, "content", asText(item.get("output")));
     }
 
     private String flattenContent(Object contentObject) {
@@ -222,20 +230,22 @@ public class OllamaProvider implements LlmProvider {
 
                 Map<?, ?> toolCallMap = (Map<?, ?>) toolCallObject;
                 Map<?, ?> function = toolCallMap.get("function") instanceof Map<?, ?>
-                        ? (Map<?, ?>) toolCallMap.get("function")
-                        : Collections.emptyMap();
+                    ? (Map<?, ?>) toolCallMap.get("function")
+                    : Collections.emptyMap();
                 String toolName = asText(function.get("name"));
                 Object argumentsObject = function.get("arguments") instanceof Map<?, ?>
-                        ? function.get("arguments")
-                        : Collections.emptyMap();
+                    ? function.get("arguments")
+                    : Collections.emptyMap();
                 String callId = buildCallId(index, toolName);
                 toolNameByCallId.put(callId, toolName);
 
-                toolCalls.add(new LlmToolCall(
+                toolCalls.add(
+                    new LlmToolCall(
                         callId,
                         toolName,
                         objectMapper.writeValueAsString(argumentsObject)
-                ));
+                    )
+                );
                 index++;
             }
         }
@@ -250,20 +260,16 @@ public class OllamaProvider implements LlmProvider {
             assistantMessage.put("tool_calls", toolCallsObject);
         }
 
-        return new LlmProviderResponse(
-                content,
-                toolCalls,
-                List.of(assistantMessage)
-        );
+        return new LlmProviderResponse(content, toolCalls, List.of(assistantMessage));
     }
 
     private void logTokenUsage(Map<?, ?> parsed) {
         int promptTokens = parsed.get("prompt_eval_count") instanceof Number
-                ? ((Number) parsed.get("prompt_eval_count")).intValue()
-                : 0;
+            ? ((Number) parsed.get("prompt_eval_count")).intValue()
+            : 0;
         int completionTokens = parsed.get("eval_count") instanceof Number
-                ? ((Number) parsed.get("eval_count")).intValue()
-                : 0;
+            ? ((Number) parsed.get("eval_count")).intValue()
+            : 0;
         lastTokenUsage = promptTokens + completionTokens;
     }
 
@@ -299,5 +305,4 @@ public class OllamaProvider implements LlmProvider {
     private String asText(Object value) {
         return value == null ? "" : String.valueOf(value);
     }
-
 }
