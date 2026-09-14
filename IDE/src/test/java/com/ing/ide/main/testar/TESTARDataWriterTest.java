@@ -6,18 +6,23 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.ing.datalib.component.EnvTestData;
 import com.ing.datalib.component.Project;
 import com.ing.datalib.component.Scenario;
 import com.ing.datalib.component.TestCase;
+import com.ing.datalib.component.TestData;
 import com.ing.datalib.component.TestStep;
 import com.ing.datalib.or.common.ObjectGroup;
 import com.ing.datalib.or.web.WebORObject;
 import com.ing.datalib.or.web.WebORPage;
+import com.ing.datalib.testdata.model.Record;
+import com.ing.datalib.testdata.model.TestDataModel;
 import com.ing.ide.main.testar.playwright.system.PlaywrightState;
 import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +31,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
@@ -236,7 +242,27 @@ public class TESTARDataWriterTest {
         assertThat(webORPage.getObjectGroupByName("username[input]")).isNotNull();
     }
 
+    @Test
+    public void testInputsFromOneExecutionShareOneDataRow() throws IOException {
+        InMemoryTestDataModel testDataModel = new InMemoryTestDataModel();
+        TESTARDataWriter writer = createWriter(testDataModel);
+
+        writer.addConcreteTestStep("username[input]", "", "Fill", "@user", "");
+        writer.addConcreteTestStep("password[input]", "", "Fill", "@pass", "");
+
+        assertThat(testDataModel.getRecords()).hasSize(1);
+        Record record = testDataModel.getRecords().get(0);
+        assertThat(record.get(testDataModel.getColumnIndex("username[input]_Fill")))
+            .isEqualTo("user");
+        assertThat(record.get(testDataModel.getColumnIndex("password[input]_Fill")))
+            .isEqualTo("pass");
+    }
+
     private TESTARDataWriter createWriter() throws IOException {
+        return createWriter(null);
+    }
+
+    private TESTARDataWriter createWriter(TestDataModel testDataModel) throws IOException {
         tempDir = Files.createTempDirectory("ingenious-testar-writer-test");
         Project project = mock(Project.class);
         Scenario bddScenario = mock(Scenario.class);
@@ -247,8 +273,16 @@ public class TESTARDataWriterTest {
         when(project.getLocation()).thenReturn(tempDir.toString());
         when(project.addScenario("BDD-MCP_scenario")).thenReturn(bddScenario);
         when(project.getScenarioByName("BDD-MCP_scenario")).thenReturn(bddScenario);
+        when(bddScenario.getName()).thenReturn("BDD-MCP_scenario");
         when(project.getReusableScenarioByName(anyString())).thenReturn(null);
         when(project.addReusableScenario(anyString())).thenReturn(reusableScenario);
+        if (testDataModel != null) {
+            EnvTestData envTestData = mock(EnvTestData.class);
+            TestData defaultTestData = mock(TestData.class);
+            when(project.getTestData()).thenReturn(envTestData);
+            when(envTestData.defData()).thenReturn(defaultTestData);
+            when(defaultTestData.getByName(anyString())).thenReturn(testDataModel);
+        }
         when(bddScenario.addTestCase(anyString()))
             .thenAnswer(invocation -> createMockTestCase(invocation.getArgument(0, String.class)));
         when(reusableScenario.getTestCaseByName(anyString()))
@@ -266,6 +300,57 @@ public class TESTARDataWriterTest {
             );
 
         return new TESTARDataWriter(project, "Loan Scenario");
+    }
+
+    private static class InMemoryTestDataModel extends TestDataModel {
+
+        private InMemoryTestDataModel() {
+            super("", false);
+            setColumns(Record.HEADERS);
+        }
+
+        @Override
+        public Record getNewRecord() {
+            return new Record();
+        }
+
+        @Override
+        public Set<String> loadColumns(File location) {
+            return Set.of(Record.HEADERS);
+        }
+
+        @Override
+        public TestDataModel loadRecords(File location) {
+            return this;
+        }
+
+        @Override
+        public Set<String> loadColumns() {
+            return Set.of(Record.HEADERS);
+        }
+
+        @Override
+        public TestDataModel loadRecords() {
+            return this;
+        }
+
+        @Override
+        public Boolean rename(String newName) {
+            return true;
+        }
+
+        @Override
+        public Boolean delete() {
+            return true;
+        }
+
+        @Override
+        public void saveChanges() {}
+
+        @Override
+        public String getName() {
+            return "InMemoryTestData";
+        }
     }
 
     private TestCase createMockTestCase(String testCaseName) {

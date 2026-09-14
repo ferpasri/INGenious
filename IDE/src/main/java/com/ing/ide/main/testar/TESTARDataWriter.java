@@ -486,18 +486,31 @@ public class TESTARDataWriter {
         String iteration = "1";
         String subIteration = "1";
 
-        // If the first four identification columns exist, return the existing row
+        int scenarioColumn = testDataModel.getColumnIndex("Scenario");
+        int flowColumn = testDataModel.getColumnIndex("Flow");
+        int iterationColumn = testDataModel.getColumnIndex("Iteration");
+        int subIterationColumn = testDataModel.getColumnIndex("SubIteration");
+
+        // Resolve the row by column names because Scope is inserted between Flow and Iteration.
         List<?> records = testDataModel.getRecords();
         for (int i = 0; i < records.size(); i++) {
             Object recordObj = records.get(i);
             if (recordObj instanceof List) {
                 List<?> record = (List<?>) recordObj;
                 if (
-                    record.size() >= 4 &&
-                    scenarioName.equals(String.valueOf(record.get(0))) &&
-                    testCaseName.equals(String.valueOf(record.get(1))) &&
-                    iteration.equals(String.valueOf(record.get(2))) &&
-                    subIteration.equals(String.valueOf(record.get(3)))
+                    scenarioColumn >= 0 &&
+                    flowColumn >= 0 &&
+                    iterationColumn >= 0 &&
+                    subIterationColumn >= 0 &&
+                    record.size() >
+                    Math.max(
+                        Math.max(scenarioColumn, flowColumn),
+                        Math.max(iterationColumn, subIterationColumn)
+                    ) &&
+                    scenarioName.equals(Objects.toString(record.get(scenarioColumn), "")) &&
+                    testCaseName.equals(Objects.toString(record.get(flowColumn), "")) &&
+                    iteration.equals(Objects.toString(record.get(iterationColumn), "")) &&
+                    subIteration.equals(Objects.toString(record.get(subIterationColumn), ""))
                 ) {
                     return i;
                 }
