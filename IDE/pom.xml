@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.ing</groupId>
 		<artifactId>ingenious-playwright</artifactId>
-		<version>3.0.0-preview</version>
+		<version>3.1.0</version>
 	</parent>
 	<artifactId>ingenious-ide</artifactId>
 	<packaging>jar</packaging>
@@ -192,14 +192,14 @@
 			<type>jar</type>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.jetty</groupId>
-			<artifactId>jetty-servlet</artifactId>
+			<groupId>org.eclipse.jetty.ee8</groupId>
+			<artifactId>jetty-ee8-servlet</artifactId>
 			<version>${jetty.version}</version>
 			<type>jar</type>
 		</dependency>
 		<dependency>
-			<groupId>org.eclipse.jetty.websocket</groupId>
-			<artifactId>websocket-servlet</artifactId>
+			<groupId>org.eclipse.jetty.ee8.websocket</groupId>
+			<artifactId>jetty-ee8-websocket-jetty-server</artifactId>
 			<version>${jetty.version}</version>
 			<type>jar</type>
 		</dependency>
@@ -253,6 +253,7 @@
 			<version>3.10.0</version>
 			<scope>compile</scope>
 		</dependency>
+		<!-- Test Dependencies -->
 		<dependency>
 			<groupId>org.testng</groupId>
 			<artifactId>testng</artifactId>
