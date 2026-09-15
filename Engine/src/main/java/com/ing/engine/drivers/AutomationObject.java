@@ -1104,7 +1104,6 @@ public class AutomationObject implements AutomationObjectApi {
                 Locator locator = factory.create(tag, value, options);
                 if (locator != null) {
                     elements.add(locator);
-                    break;
                 }
             } catch (Exception e) {
                 String msg = String.format(
