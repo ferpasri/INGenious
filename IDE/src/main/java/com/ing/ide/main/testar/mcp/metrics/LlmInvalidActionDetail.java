@@ -4,7 +4,6 @@ package com.ing.ide.main.testar.mcp.metrics;
  * One invalid MCP tool execution recorded during a Studio TESTAR run.
  */
 public class LlmInvalidActionDetail {
-
     private final int index;
     private final String toolName;
     private final String bddStep;
@@ -14,14 +13,16 @@ public class LlmInvalidActionDetail {
     private final String reasonSummary;
     private final String feedbackMessage;
 
-    public LlmInvalidActionDetail(int index,
-                                  String toolName,
-                                  String bddStep,
-                                  String selector,
-                                  String value,
-                                  String reasonCode,
-                                  String reasonSummary,
-                                  String feedbackMessage) {
+    public LlmInvalidActionDetail(
+        int index,
+        String toolName,
+        String bddStep,
+        String selector,
+        String value,
+        String reasonCode,
+        String reasonSummary,
+        String feedbackMessage
+    ) {
         this.index = index;
         this.toolName = toolName != null ? toolName : "";
         this.bddStep = bddStep != null ? bddStep : "";

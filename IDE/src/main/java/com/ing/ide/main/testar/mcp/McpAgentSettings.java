@@ -1,7 +1,6 @@
 package com.ing.ide.main.testar.mcp;
 
 public class McpAgentSettings {
-
     public String llmProviderName;
     public String apiUrl;
     public String apiKeyEnvVarName;
@@ -14,6 +13,5 @@ public class McpAgentSettings {
     public String bddInstructions;
 
     // Jackson no-arg constructor
-    public McpAgentSettings() { }
-
+    public McpAgentSettings() {}
 }

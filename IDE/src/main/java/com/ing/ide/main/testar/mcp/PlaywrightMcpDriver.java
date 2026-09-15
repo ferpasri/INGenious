@@ -7,15 +7,14 @@ import com.ing.ide.main.testar.service.action.ActionService;
 import com.ing.ide.main.testar.service.action.PlaywrightActionService;
 import com.ing.ide.main.testar.service.assertion.AssertionService;
 import com.ing.ide.main.testar.service.assertion.PlaywrightAssertionService;
-import com.ing.ide.main.testar.service.persistence.PersistenceService;
 import com.ing.ide.main.testar.service.persistence.INGeniousPersistenceService;
-import com.ing.ide.main.testar.service.session.SessionService;
+import com.ing.ide.main.testar.service.persistence.PersistenceService;
 import com.ing.ide.main.testar.service.session.PlaywrightSessionService;
-import com.ing.ide.main.testar.service.state.StateService;
+import com.ing.ide.main.testar.service.session.SessionService;
 import com.ing.ide.main.testar.service.state.PlaywrightStateService;
+import com.ing.ide.main.testar.service.state.StateService;
 
 public class PlaywrightMcpDriver implements McpInterface {
-
     private final SessionContext context;
     private final PersistenceService persistenceService;
     private final SessionService sessionService;
@@ -98,5 +97,4 @@ public class PlaywrightMcpDriver implements McpInterface {
         persistenceService.saveExecutionSteps();
         sessionService.stop(context);
     }
-
 }

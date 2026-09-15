@@ -7,7 +7,6 @@ import com.microsoft.playwright.Page;
 import org.testar.monkey.alayer.Action;
 
 public class INGeniousPersistenceService implements PersistenceService {
-
     private final TESTARDataWriter dataWriter;
 
     public INGeniousPersistenceService(TESTARDataWriter dataWriter) {
@@ -17,23 +16,23 @@ public class INGeniousPersistenceService implements PersistenceService {
     @Override
     public void recordLoadWebUrl(String bddStep, String url) {
         dataWriter.addAbstractTestStep(
-                bddStep,
-                "Browser",
-                "Open the Url [<Data>] in the Browser",
-                "Open",
-                "@".concat(url),
-                ""
+            bddStep,
+            "Browser",
+            "Open the Url [<Data>] in the Browser",
+            "Open",
+            "@".concat(url),
+            ""
         );
     }
 
     @Override
     public void recordNavigateBack() {
         dataWriter.addConcreteTestStep(
-                "Browser",
-                "Navigate to the previous page in history",
-                "GoBack",
-                "",
-                ""
+            "Browser",
+            "Navigate to the previous page in history",
+            "GoBack",
+            "",
+            ""
         );
     }
 

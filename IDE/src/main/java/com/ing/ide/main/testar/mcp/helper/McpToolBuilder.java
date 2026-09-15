@@ -1,7 +1,6 @@
 package com.ing.ide.main.testar.mcp.helper;
 
 import com.ing.ide.main.testar.mcp.McpInterface;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -20,7 +19,7 @@ public final class McpToolBuilder {
 
     private McpToolBuilder() {}
 
-        /*
+    /*
         "tools": [
             {
                 "type": "function",
@@ -60,40 +59,42 @@ public final class McpToolBuilder {
         ]
     */
 
-    public static List<Map<String,Object>> from(Class<?> apiInterface) {
-        List<Map<String,Object>> functionsMap = new ArrayList<>();
+    public static List<Map<String, Object>> from(Class<?> apiInterface) {
+        List<Map<String, Object>> functionsMap = new ArrayList<>();
         for (Method m : apiInterface.getMethods()) {
             McpMethod mcpMethod = m.getAnnotation(McpMethod.class);
             if (mcpMethod == null) continue;
 
             String name = mcpMethod.name().isEmpty() ? m.getName() : mcpMethod.name();
-            Map<String,Object> props = new LinkedHashMap<>();
+            Map<String, Object> props = new LinkedHashMap<>();
             List<String> required = new ArrayList<>();
 
             for (Parameter p : m.getParameters()) {
                 McpParam mcpParam = p.getAnnotation(McpParam.class);
                 if (mcpParam == null) {
-                    java.util.logging.Logger.getLogger(McpToolBuilder.class.getName()).log(
-                            java.util.logging.Level.SEVERE,
-                            "Parameter missing mcpParam on " + m
-                    );
+                    java
+                        .util.logging.Logger.getLogger(McpToolBuilder.class.getName())
+                        .log(java.util.logging.Level.SEVERE, "Parameter missing mcpParam on " + m);
                     continue;
                 }
 
-                Map<String,Object> schema = new LinkedHashMap<>();
+                Map<String, Object> schema = new LinkedHashMap<>();
                 schema.put("type", "string");
-                if (!mcpParam.description().isEmpty()) schema.put("description", mcpParam.description());
+                if (!mcpParam.description().isEmpty()) schema.put(
+                    "description",
+                    mcpParam.description()
+                );
                 props.put(mcpParam.name(), schema);
                 if (mcpParam.required()) required.add(mcpParam.name());
             }
 
-            Map<String,Object> params = new LinkedHashMap<>();
+            Map<String, Object> params = new LinkedHashMap<>();
             params.put("type", "object");
             params.put("properties", props);
             params.put("additionalProperties", false);
             params.put("required", required);
 
-            Map<String,Object> tool = new LinkedHashMap<>();
+            Map<String, Object> tool = new LinkedHashMap<>();
             tool.put("type", "function");
             tool.put("name", name);
             tool.put("description", mcpMethod.description());
@@ -104,5 +105,4 @@ public final class McpToolBuilder {
         }
         return functionsMap;
     }
-
 }

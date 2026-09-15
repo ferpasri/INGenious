@@ -9,7 +9,6 @@ import com.ing.ide.main.testar.service.action.PlaywrightActionService;
 import com.ing.ide.main.testar.service.persistence.PersistenceService;
 import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.PlaywrightException;
-
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -22,7 +21,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class PlaywrightStateService implements StateService {
-
     private final PersistenceService persistenceService;
 
     public PlaywrightStateService(PersistenceService persistenceService) {
@@ -32,7 +30,10 @@ public class PlaywrightStateService implements StateService {
     @Override
     public Feedback getStateInteractiveWidgets(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
+            return Feedback.issue(
+                Feedback.Code.STATE_NOT_INITIALIZED,
+                "No web state-page initialized."
+            );
         }
 
         List<String> widgetsContext = new ArrayList<>();
@@ -47,7 +48,10 @@ public class PlaywrightStateService implements StateService {
             }
         } catch (PlaywrightException e) {
             addSevereLog("Failed to collect state interactive elements: " + e.getMessage());
-            return Feedback.issue(Feedback.Code.STATE_WIDGETS_COLLECTION_FAILED, "Trying to obtain state interactive elements information: " + e.getMessage());
+            return Feedback.issue(
+                Feedback.Code.STATE_WIDGETS_COLLECTION_FAILED,
+                "Trying to obtain state interactive elements information: " + e.getMessage()
+            );
         }
 
         return Feedback.validContext(String.join("\n", widgetsContext));
@@ -56,7 +60,10 @@ public class PlaywrightStateService implements StateService {
     @Override
     public Feedback getStateImage(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
+            return Feedback.issue(
+                Feedback.Code.STATE_NOT_INITIALIZED,
+                "No web state-page initialized."
+            );
         }
 
         try {
@@ -71,7 +78,10 @@ public class PlaywrightStateService implements StateService {
     @Override
     public Feedback getStateVisualText(SessionContext context) {
         if (context.getState() == null) {
-            return Feedback.issue(Feedback.Code.STATE_NOT_INITIALIZED, "No web state-page initialized.");
+            return Feedback.issue(
+                Feedback.Code.STATE_NOT_INITIALIZED,
+                "No web state-page initialized."
+            );
         }
 
         List<String> widgetsContext = new ArrayList<>();
@@ -86,17 +96,26 @@ public class PlaywrightStateService implements StateService {
             for (PlaywrightWidget widget : stateWidgets) {
                 // Prepare the web widget text context to be sent to the AI agent
                 Map<String, String> widgetInfo = new LinkedHashMap<>();
-                widgetInfo.put("text", widget.get(PlaywrightTags.WebLocatorText).replaceAll("\\s+", " ").trim());
+                widgetInfo.put(
+                    "text",
+                    widget.get(PlaywrightTags.WebLocatorText).replaceAll("\\s+", " ").trim()
+                );
 
                 // Then serialize each widget as JSON or custom line format:
-                widgetsContext.add(widgetInfo.entrySet().stream()
+                widgetsContext.add(
+                    widgetInfo
+                        .entrySet()
+                        .stream()
                         .map(e -> e.getKey() + ": " + e.getValue())
                         .collect(Collectors.joining(" | "))
                 );
             }
         } catch (PlaywrightException e) {
             addSevereLog("Failed to collect visible text of state elements: " + e.getMessage());
-            return Feedback.issue(Feedback.Code.STATE_VISUAL_TEXT_COLLECTION_FAILED, "Trying to obtain visible text of state elements: " + e.getMessage());
+            return Feedback.issue(
+                Feedback.Code.STATE_VISUAL_TEXT_COLLECTION_FAILED,
+                "Trying to obtain visible text of state elements: " + e.getMessage()
+            );
         }
 
         return Feedback.validContext(String.join("\n", widgetsContext));
@@ -127,8 +146,10 @@ public class PlaywrightStateService implements StateService {
 
     private boolean shouldPersistWidget(PlaywrightState state, PlaywrightWidget widget) {
         // Only widgets with CSS locators in the current web domain
-        return !widget.get(PlaywrightTags.WebLocatorCSS, "").isEmpty()
-                && !isExternalLink(state, widget.get(PlaywrightTags.WebHref, ""));
+        return (
+            !widget.get(PlaywrightTags.WebLocatorCSS, "").isEmpty() &&
+            !isExternalLink(state, widget.get(PlaywrightTags.WebHref, ""))
+        );
     }
 
     private String serializeInteractiveWidget(PlaywrightWidget widget) {
@@ -155,16 +176,21 @@ public class PlaywrightStateService implements StateService {
             if (!optionValues.isEmpty()) {
                 widgetInfo.put("options", String.join(", ", optionValues));
             }
-        } 
+        }
         // Otherwise, add the text content
         else {
-            widgetInfo.put("text", widget.get(PlaywrightTags.WebLocatorText).replaceAll("\\s+", " ").trim());
+            widgetInfo.put(
+                "text",
+                widget.get(PlaywrightTags.WebLocatorText).replaceAll("\\s+", " ").trim()
+            );
         }
 
         // Then serialize each widget as JSON or custom line format:
-        return widgetInfo.entrySet().stream()
-                .map(entry -> entry.getKey() + ": " + entry.getValue())
-                .collect(Collectors.joining(" | "));
+        return widgetInfo
+            .entrySet()
+            .stream()
+            .map(entry -> entry.getKey() + ": " + entry.getValue())
+            .collect(Collectors.joining(" | "));
     }
 
     private boolean isExternalLink(PlaywrightState state, String href) {
@@ -175,7 +201,9 @@ public class PlaywrightStateService implements StateService {
         href = href.trim().toLowerCase();
 
         // Consider these schemes always external
-        if (href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")) {
+        if (
+            href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("javascript:")
+        ) {
             return true;
         }
 
@@ -204,7 +232,6 @@ public class PlaywrightStateService implements StateService {
             }
 
             return host;
-
         } catch (URISyntaxException e) {
             addSevereLog("Exception extracting the host domain of: " + url);
         }

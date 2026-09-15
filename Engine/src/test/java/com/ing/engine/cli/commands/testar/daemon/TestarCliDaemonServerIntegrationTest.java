@@ -30,7 +30,8 @@ public class TestarCliDaemonServerIntegrationTest {
 
         TestarCliDaemonServer server = new TestarCliDaemonServer();
         TestarBackendApi backend = mock(TestarBackendApi.class);
-        when(backend.stopSession()).thenReturn(TestarResult.success("stopped", "TESTAR session stopped.", null));
+        when(backend.stopSession())
+            .thenReturn(TestarResult.success("stopped", "TESTAR session stopped.", null));
         setPrivateField(server, "backend", backend);
 
         Thread serverThread = new Thread(server::run, "testar-cli-daemon-test");
@@ -82,12 +83,14 @@ public class TestarCliDaemonServerIntegrationTest {
     private TestarCliResponse sendRequest(TestarCliRequest request) throws IOException {
         try (Socket socket = new Socket()) {
             socket.connect(
-                    new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
-                    TestarCliDaemonConfig.CONNECT_TIMEOUT_MS
+                new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
+                TestarCliDaemonConfig.CONNECT_TIMEOUT_MS
             );
 
-            try (DataOutputStream output = new DataOutputStream(socket.getOutputStream());
-                 DataInputStream input = new DataInputStream(socket.getInputStream())) {
+            try (
+                DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+                DataInputStream input = new DataInputStream(socket.getInputStream())
+            ) {
                 output.writeUTF(request.getCommand());
                 output.writeInt(request.getArguments().size());
                 for (String argument : request.getArguments()) {
@@ -120,8 +123,8 @@ public class TestarCliDaemonServerIntegrationTest {
     private boolean isPortReachable() {
         try (Socket socket = new Socket()) {
             socket.connect(
-                    new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
-                    200
+                new InetSocketAddress(TestarCliDaemonConfig.HOST, TestarCliDaemonConfig.PORT),
+                200
             );
             return true;
         } catch (IOException exception) {

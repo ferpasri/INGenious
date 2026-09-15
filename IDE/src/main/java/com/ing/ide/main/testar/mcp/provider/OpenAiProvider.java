@@ -2,13 +2,6 @@ package com.ing.ide.main.testar.mcp.provider;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +11,11 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * OpenAI Responses API implementation of the {@link LlmProvider} contract.
@@ -29,7 +27,6 @@ import java.util.logging.Logger;
  * </p>
  */
 public class OpenAiProvider implements LlmProvider {
-
     private static final Logger LOGGER = Logger.getLogger(OpenAiProvider.class.getName());
 
     private final OkHttpClient client;
@@ -43,18 +40,21 @@ public class OpenAiProvider implements LlmProvider {
     private List<Map<String, Object>> registeredTools = Collections.emptyList();
     private volatile int lastTokenUsage = 0;
 
-    public OpenAiProvider(String apiUrl,
-                          String apiKey,
-                          String model,
-                          boolean visionEnabled,
-                          String reasoningLevel) {
+    public OpenAiProvider(
+        String apiUrl,
+        String apiKey,
+        String model,
+        boolean visionEnabled,
+        String reasoningLevel
+    ) {
         this.apiUrl = apiUrl;
         this.apiKey = apiKey;
         this.model = model;
         this.visionEnabled = visionEnabled;
         this.reasoningLevel = reasoningLevel;
         this.mapper = new ObjectMapper();
-        this.client = new OkHttpClient.Builder()
+        this.client =
+            new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(120, TimeUnit.SECONDS)
                 .readTimeout(3, TimeUnit.MINUTES)
@@ -71,9 +71,12 @@ public class OpenAiProvider implements LlmProvider {
      * Executes one provider turn using the OpenAI Responses API.
      */
     @Override
-    public LlmProviderResponse executePrompt(String systemPrompt,
-                                             List<Map<String, Object>> input,
-                                             boolean visionRequested) throws LlmProviderException {
+    public LlmProviderResponse executePrompt(
+        String systemPrompt,
+        List<Map<String, Object>> input,
+        boolean visionRequested
+    )
+        throws LlmProviderException {
         Map<String, Object> body = new HashMap<>();
         body.put("model", model);
         body.put("tools", registeredTools);
@@ -92,25 +95,37 @@ public class OpenAiProvider implements LlmProvider {
         }
 
         Request request = new Request.Builder()
-                .url(apiUrl)
-                .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
-                .header("Copilot-Vision-Request", String.valueOf(visionRequested))
-                .post(RequestBody.create(MediaType.parse("application/json"), requestJson))
-                .build();
+            .url(apiUrl)
+            .header("Authorization", "Bearer " + apiKey)
+            .header("Content-Type", "application/json")
+            .header("Copilot-Vision-Request", String.valueOf(visionRequested))
+            .post(RequestBody.create(MediaType.parse("application/json"), requestJson))
+            .build();
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 if (response.code() == 429) {
                     long waitTime = parseRetryAfter(response.header("Retry-After"));
-                    throw new LlmProviderException("OpenAI rate limited (429)", response.code(), true, waitTime);
+                    throw new LlmProviderException(
+                        "OpenAI rate limited (429)",
+                        response.code(),
+                        true,
+                        waitTime
+                    );
                 }
 
                 String responseBody = response.body() != null ? response.body().string() : "";
-                LOGGER.log(Level.SEVERE, "OpenAI API error. Status: {0}, Body: {1}",
-                        new Object[] { response.code(), responseBody });
-                throw new LlmProviderException("OpenAI API call failed with status: " + response.code(),
-                        response.code(), false, 0L);
+                LOGGER.log(
+                    Level.SEVERE,
+                    "OpenAI API error. Status: {0}, Body: {1}",
+                    new Object[] { response.code(), responseBody }
+                );
+                throw new LlmProviderException(
+                    "OpenAI API call failed with status: " + response.code(),
+                    response.code(),
+                    false,
+                    0L
+                );
             }
 
             String responseJson = Objects.requireNonNull(response.body()).string();
@@ -141,9 +156,11 @@ public class OpenAiProvider implements LlmProvider {
         }
 
         String normalizedModel = model == null ? "" : model.toLowerCase();
-        return normalizedModel.contains("gpt-4o")
-                || normalizedModel.contains("gpt-4.1")
-                || normalizedModel.contains("gpt-5");
+        return (
+            normalizedModel.contains("gpt-4o") ||
+            normalizedModel.contains("gpt-4.1") ||
+            normalizedModel.contains("gpt-5")
+        );
     }
 
     @Override
@@ -158,10 +175,12 @@ public class OpenAiProvider implements LlmProvider {
     }
 
     private boolean shouldIncludeReasoningEffort() {
-        return isReasoningModel()
-                && reasoningLevel != null
-                && !reasoningLevel.isBlank()
-                && !"none".equalsIgnoreCase(reasoningLevel);
+        return (
+            isReasoningModel() &&
+            reasoningLevel != null &&
+            !reasoningLevel.isBlank() &&
+            !"none".equalsIgnoreCase(reasoningLevel)
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -179,11 +198,13 @@ public class OpenAiProvider implements LlmProvider {
                 continue;
             }
 
-            toolCalls.add(new LlmToolCall(
+            toolCalls.add(
+                new LlmToolCall(
                     asText(item.get("call_id")),
                     asText(item.get("name")),
                     asText(item.get("arguments"))
-            ));
+                )
+            );
         }
         return toolCalls;
     }
@@ -219,5 +240,4 @@ public class OpenAiProvider implements LlmProvider {
     private Number asNumber(Object value) {
         return value instanceof Number ? (Number) value : null;
     }
-
 }

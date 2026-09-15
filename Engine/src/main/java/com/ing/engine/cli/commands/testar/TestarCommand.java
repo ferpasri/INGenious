@@ -1,16 +1,15 @@
 package com.ing.engine.cli.commands.testar;
 
 import com.ing.engine.cli.INGeniousCLI;
+import com.ing.engine.cli.commands.testar.TestarBddGoalLoader.ResolvedBddGoal;
 import com.ing.engine.cli.commands.testar.daemon.TestarCliDaemonClient;
 import com.ing.engine.cli.commands.testar.daemon.TestarCliDaemonServer;
 import com.ing.engine.cli.commands.testar.daemon.TestarCliRequest;
-import com.ing.engine.cli.commands.testar.TestarBddGoalLoader.ResolvedBddGoal;
+import java.util.Arrays;
+import java.util.concurrent.Callable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
-
-import java.util.Arrays;
-import java.util.concurrent.Callable;
 
 @Command(
     name = "testar",
@@ -26,7 +25,6 @@ import java.util.concurrent.Callable;
     }
 )
 public class TestarCommand implements Callable<Integer> {
-
     @ParentCommand
     private INGeniousCLI parent;
 
@@ -42,13 +40,12 @@ public class TestarCommand implements Callable<Integer> {
     }
 
     static final class ClientFacade {
-
         private final TestarCliDaemonClient client = new TestarCliDaemonClient();
 
         int send(INGeniousCLI cli, String command, String... arguments) {
             return TestarCliSupport.printDaemonResponse(
-                    cli,
-                    client.send(TestarCliRequest.of(command, Arrays.asList(arguments)))
+                cli,
+                client.send(TestarCliRequest.of(command, Arrays.asList(arguments)))
             );
         }
     }
@@ -58,13 +55,10 @@ public class TestarCommand implements Callable<Integer> {
         mixinStandardHelpOptions = true,
         description = "Manage a TESTAR automation session",
         subcommands = {
-            SessionCommand.Start.class,
-            SessionCommand.Status.class,
-            SessionCommand.Stop.class
+            SessionCommand.Start.class, SessionCommand.Status.class, SessionCommand.Stop.class
         }
     )
     public static class SessionCommand implements Callable<Integer> {
-
         @ParentCommand
         private TestarCommand parent;
 
@@ -76,60 +70,79 @@ public class TestarCommand implements Callable<Integer> {
 
         @Command(name = "start", description = "Start a TESTAR automation session")
         public static class Start implements Callable<Integer> {
-
             @ParentCommand
             private SessionCommand parent;
 
-            @Option(names = {"--url"}, required = true, description = "URL to open in the TESTAR session")
+            @Option(
+                names = { "--url" },
+                required = true,
+                description = "URL to open in the TESTAR session"
+            )
             private String url;
 
-            @Option(names = {"--bdd-scenario"}, description = "BDD scenario name for generated artifacts")
+            @Option(
+                names = { "--bdd-scenario" },
+                description = "BDD scenario name for generated artifacts"
+            )
             private String bddScenarioName;
 
-            @Option(names = {"--project", "-p"}, description = "Project path for generated TESTAR artifacts")
+            @Option(
+                names = { "--project", "-p" },
+                description = "Project path for generated TESTAR artifacts"
+            )
             private String projectPathOption;
 
-            @Option(names = {"--bdd-goal"}, description = "BDD goal id under .agents/bdd_goals, for example parabank/requested_loans_with_small_down_payments_must_be_denied")
+            @Option(
+                names = { "--bdd-goal" },
+                description = "BDD goal id under .agents/bdd_goals, for example parabank/requested_loans_with_small_down_payments_must_be_denied"
+            )
             private String bddGoalId;
 
-            @Option(names = {"--bdd-file"}, description = "Path to a BDD scenario file")
+            @Option(names = { "--bdd-file" }, description = "Path to a BDD scenario file")
             private String bddFilePath;
 
             @Override
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
-                String projectPath = projectPathOption != null && !projectPathOption.trim().isEmpty()
-                        ? projectPathOption
-                        : cli.getProjectPath();
+                String projectPath = projectPathOption != null &&
+                    !projectPathOption.trim().isEmpty()
+                    ? projectPathOption
+                    : cli.getProjectPath();
 
                 if (projectPath == null || projectPath.trim().isEmpty()) {
-                    cli.printError("Project path required. Use --project before 'testar' or use 'testar session start -p <projectPath> ...'.");
+                    cli.printError(
+                        "Project path required. Use --project before 'testar' or use 'testar session start -p <projectPath> ...'."
+                    );
                     return 1;
                 }
 
                 ResolvedBddGoal resolvedGoal;
                 try {
-                    resolvedGoal = TestarBddGoalLoader.resolve(
+                    resolvedGoal =
+                        TestarBddGoalLoader.resolve(
                             bddGoalId,
                             bddFilePath,
                             bddScenarioName != null && !bddScenarioName.trim().isEmpty()
-                                    ? bddScenarioName.trim()
-                                    : "BDD CLI Scenario"
-                    );
+                                ? bddScenarioName.trim()
+                                : "BDD CLI Scenario"
+                        );
                 } catch (IllegalArgumentException exception) {
                     cli.printError(exception.getMessage());
                     return 1;
                 }
 
-                return new ClientFacade().send(
+                return new ClientFacade()
+                .send(
                         cli,
                         "session.start",
                         projectPath,
                         resolvedGoal.getScenarioName(),
                         resolvedGoal.getBddInstructions(),
-                        resolvedGoal.getSourcePath() != null ? resolvedGoal.getSourcePath().toString() : "",
+                        resolvedGoal.getSourcePath() != null
+                            ? resolvedGoal.getSourcePath().toString()
+                            : "",
                         url
-                );
+                    );
             }
         }
 
@@ -159,9 +172,7 @@ public class TestarCommand implements Callable<Integer> {
         mixinStandardHelpOptions = true,
         description = "Query TESTAR automation state",
         subcommands = {
-            StateCommand.Widgets.class,
-            StateCommand.Text.class,
-            StateCommand.Image.class
+            StateCommand.Widgets.class, StateCommand.Text.class, StateCommand.Image.class
         }
     )
     public static class StateCommand implements Callable<Integer> {
@@ -172,7 +183,10 @@ public class TestarCommand implements Callable<Integer> {
             return 0;
         }
 
-        @Command(name = "widgets", description = "Get interactive widgets from the current TESTAR session")
+        @Command(
+            name = "widgets",
+            description = "Get interactive widgets from the current TESTAR session"
+        )
         public static class Widgets implements Callable<Integer> {
 
             @Override
@@ -207,10 +221,7 @@ public class TestarCommand implements Callable<Integer> {
         name = "navigation",
         mixinStandardHelpOptions = true,
         description = "Navigate within the current TESTAR session",
-        subcommands = {
-            NavigationCommand.Url.class,
-            NavigationCommand.Back.class
-        }
+        subcommands = { NavigationCommand.Url.class, NavigationCommand.Back.class }
     )
     public static class NavigationCommand implements Callable<Integer> {
 
@@ -262,11 +273,18 @@ public class TestarCommand implements Callable<Integer> {
 
         @Command(name = "click", description = "Click an element in the current TESTAR session")
         public static class Click implements Callable<Integer> {
-
-            @Option(names = {"--bdd-step"}, required = true, description = "BDD step associated with the click action")
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the click action"
+            )
             private String bddStep;
 
-            @Option(names = {"--selector"}, required = true, description = "CSS selector of the clickable element")
+            @Option(
+                names = { "--selector" },
+                required = true,
+                description = "CSS selector of the clickable element"
+            )
             private String cssSelector;
 
             @Override
@@ -276,16 +294,30 @@ public class TestarCommand implements Callable<Integer> {
             }
         }
 
-        @Command(name = "fill", description = "Fill text into an input in the current TESTAR session")
+        @Command(
+            name = "fill",
+            description = "Fill text into an input in the current TESTAR session"
+        )
         public static class Fill implements Callable<Integer> {
-
-            @Option(names = {"--bdd-step"}, required = true, description = "BDD step associated with the fill action")
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the fill action"
+            )
             private String bddStep;
 
-            @Option(names = {"--selector"}, required = true, description = "CSS selector of the input element")
+            @Option(
+                names = { "--selector" },
+                required = true,
+                description = "CSS selector of the input element"
+            )
             private String cssSelector;
 
-            @Option(names = {"--text"}, required = true, description = "Text to fill into the input element")
+            @Option(
+                names = { "--text" },
+                required = true,
+                description = "Text to fill into the input element"
+            )
             private String fillText;
 
             @Override
@@ -297,24 +329,35 @@ public class TestarCommand implements Callable<Integer> {
 
         @Command(name = "select", description = "Select an option in the current TESTAR session")
         public static class Select implements Callable<Integer> {
-
-            @Option(names = {"--bdd-step"}, required = true, description = "BDD step associated with the select action")
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the select action"
+            )
             private String bddStep;
 
-            @Option(names = {"--selector"}, required = true, description = "CSS selector of the select element")
+            @Option(
+                names = { "--selector" },
+                required = true,
+                description = "CSS selector of the select element"
+            )
             private String cssSelector;
 
-            @Option(names = {"--value"}, required = true, description = "Option value to select")
+            @Option(names = { "--value" }, required = true, description = "Option value to select")
             private String optionValue;
 
             @Override
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
-                return new ClientFacade().send(cli, "action.select", bddStep, cssSelector, optionValue);
+                return new ClientFacade()
+                .send(cli, "action.select", bddStep, cssSelector, optionValue);
             }
         }
 
-        @Command(name = "history", description = "Show executed TESTAR actions in the current session")
+        @Command(
+            name = "history",
+            description = "Show executed TESTAR actions in the current session"
+        )
         public static class History implements Callable<Integer> {
 
             @Override
@@ -329,9 +372,7 @@ public class TestarCommand implements Callable<Integer> {
         name = "assert",
         mixinStandardHelpOptions = true,
         description = "Add TESTAR assertions",
-        subcommands = {
-            AssertCommand.Add.class
-        }
+        subcommands = { AssertCommand.Add.class }
     )
     public static class AssertCommand implements Callable<Integer> {
 
@@ -343,11 +384,18 @@ public class TestarCommand implements Callable<Integer> {
 
         @Command(name = "add", description = "Add an assertion text for a BDD step")
         public static class Add implements Callable<Integer> {
-
-            @Option(names = {"--bdd-step"}, required = true, description = "BDD step associated with the assertion")
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the assertion"
+            )
             private String bddStep;
 
-            @Option(names = {"--text"}, required = true, description = "Visible unique text used as assertion")
+            @Option(
+                names = { "--text" },
+                required = true,
+                description = "Visible unique text used as assertion"
+            )
             private String assertText;
 
             @Override

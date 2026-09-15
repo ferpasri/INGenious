@@ -3,15 +3,13 @@ package com.ing.engine.cli.commands.testar;
 import com.ing.engine.cli.INGeniousCLI;
 import com.ing.engine.cli.commands.testar.daemon.TestarCliResponse;
 import com.ing.ingenious.api.contract.testar.TestarResult;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
 public final class TestarCliSupport {
 
-    private TestarCliSupport() {
-    }
+    private TestarCliSupport() {}
 
     public static int printResult(INGeniousCLI cli, TestarResult result) {
         if (result == null) {
@@ -70,7 +68,12 @@ public final class TestarCliSupport {
 
         for (Map.Entry<String, String> entry : values.entrySet()) {
             String key = entry.getKey();
-            if ("success".equals(key) || "status".equals(key) || "message".equals(key) || "payload".equals(key)) {
+            if (
+                "success".equals(key) ||
+                "status".equals(key) ||
+                "message".equals(key) ||
+                "payload".equals(key)
+            ) {
                 continue;
             }
             System.out.println(key + ": " + entry.getValue());
@@ -101,9 +104,10 @@ public final class TestarCliSupport {
             int separatorIndex = line.indexOf('=');
             if (separatorIndex > 0) {
                 String key = line.substring(0, separatorIndex);
-                String value = line.substring(separatorIndex + 1)
-                        .replace("\\r", "\r")
-                        .replace("\\n", "\n");
+                String value = line
+                    .substring(separatorIndex + 1)
+                    .replace("\\r", "\r")
+                    .replace("\\n", "\n");
                 values.put(key, value);
             }
         }
@@ -134,22 +138,35 @@ public final class TestarCliSupport {
     }
 
     private static String toJson(TestarResult result) {
-        return "{"
-                + "\"success\":" + result.isSuccess() + ","
-                + "\"status\":" + toJsonValue(result.getStatus()) + ","
-                + "\"message\":" + toJsonValue(result.getMessage()) + ","
-                + "\"payload\":" + toJsonValue(result.getPayload())
-                + "}";
+        return (
+            "{" +
+            "\"success\":" +
+            result.isSuccess() +
+            "," +
+            "\"status\":" +
+            toJsonValue(result.getStatus()) +
+            "," +
+            "\"message\":" +
+            toJsonValue(result.getMessage()) +
+            "," +
+            "\"payload\":" +
+            toJsonValue(result.getPayload()) +
+            "}"
+        );
     }
 
     private static String toJsonValue(String value) {
         if (value == null) {
             return "null";
         }
-        return "\"" + value
+        return (
+            "\"" +
+            value
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
-                .replace("\r", "\\r") + "\"";
+                .replace("\r", "\\r") +
+            "\""
+        );
     }
 }

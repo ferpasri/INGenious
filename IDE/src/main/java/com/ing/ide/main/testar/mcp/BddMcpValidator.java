@@ -4,7 +4,6 @@ package com.ing.ide.main.testar.mcp;
  * Apply the BDD-step validation/tracking before delegating to the technical MCP driver.
  */
 public final class BddMcpValidator implements McpInterface {
-
     private final McpInterface mcpDriver;
     private final BddStepTracker tracker;
 
@@ -103,5 +102,4 @@ public final class BddMcpValidator implements McpInterface {
             tracker.saveExecutedBddStep(bddStep);
         }
     }
-
 }

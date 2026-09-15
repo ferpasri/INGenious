@@ -67,5 +67,4 @@ public final class Feedback {
     public String toString() {
         return message;
     }
-
 }

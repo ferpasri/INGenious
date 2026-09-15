@@ -18,7 +18,9 @@ public class TestarCliDaemonServerTest {
     public void testHandleSessionStatusWithoutBackend() {
         TestarCliDaemonServer server = new TestarCliDaemonServer();
 
-        TestarCliResponse response = server.handle(TestarCliRequest.of("session.status", List.of()));
+        TestarCliResponse response = server.handle(
+            TestarCliRequest.of("session.status", List.of())
+        );
 
         assertThat(response.getExitCode()).isZero();
         assertThat(response.getLines()).contains("status=idle");
@@ -30,7 +32,8 @@ public class TestarCliDaemonServerTest {
         // Active-session stop: backend exists, so stop must invoke the backend and mark daemon shutdown.
         TestarCliDaemonServer server = new TestarCliDaemonServer();
         TestarBackendApi backend = mock(TestarBackendApi.class);
-        when(backend.stopSession()).thenReturn(TestarResult.success("stopped", "TESTAR session stopped.", null));
+        when(backend.stopSession())
+            .thenReturn(TestarResult.success("stopped", "TESTAR session stopped.", null));
         setPrivateField(server, "backend", backend);
 
         TestarCliResponse response = server.handle(TestarCliRequest.of("session.stop", List.of()));
@@ -63,11 +66,14 @@ public class TestarCliDaemonServerTest {
     public void testHandleUnknownCommandReturnsErrorResponse() {
         TestarCliDaemonServer server = new TestarCliDaemonServer();
 
-        TestarCliResponse response = server.handle(TestarCliRequest.of("unknown.command", List.of()));
+        TestarCliResponse response = server.handle(
+            TestarCliRequest.of("unknown.command", List.of())
+        );
 
         assertThat(response.getExitCode()).isEqualTo(1);
         assertThat(response.getLines()).contains("status=error");
-        assertThat(response.getLines()).anyMatch(line -> line.contains("Unknown TESTAR daemon command"));
+        assertThat(response.getLines())
+            .anyMatch(line -> line.contains("Unknown TESTAR daemon command"));
         assertThat(response.getLines()).contains("daemonActiveSession=false");
     }
 

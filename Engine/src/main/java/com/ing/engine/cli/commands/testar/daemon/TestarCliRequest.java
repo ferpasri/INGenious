@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 
 public final class TestarCliRequest {
-
     private final String command;
     private final List<String> arguments;
 

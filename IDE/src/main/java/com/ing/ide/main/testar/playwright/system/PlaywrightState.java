@@ -2,17 +2,15 @@ package com.ing.ide.main.testar.playwright.system;
 
 import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.Page;
+import java.util.*;
+import java.util.stream.Stream;
 import org.testar.StateManagementTags;
 import org.testar.monkey.Assert;
 import org.testar.monkey.Util;
 import org.testar.monkey.alayer.*;
 import org.testar.monkey.alayer.exceptions.NoSuchTagException;
 
-import java.util.*;
-import java.util.stream.Stream;
-
 public class PlaywrightState extends PlaywrightWidget implements State {
-
     private final Page page;
 
     public PlaywrightState(PlaywrightSUT system) {
@@ -32,11 +30,17 @@ public class PlaywrightState extends PlaywrightWidget implements State {
     public List<PlaywrightWidget> getInteractiveWidgets() {
         List<PlaywrightWidget> stateWidgets = new ArrayList<>();
 
-        String widgetsSelector = String.join(", ", Stream.of(
-                Arrays.stream(clickableSelectors),
-                Arrays.stream(fillableSelectors),
-                Arrays.stream(selectableSelectors)
-        ).flatMap(s -> s).toArray(String[]::new));
+        String widgetsSelector = String.join(
+            ", ",
+            Stream
+                .of(
+                    Arrays.stream(clickableSelectors),
+                    Arrays.stream(fillableSelectors),
+                    Arrays.stream(selectableSelectors)
+                )
+                .flatMap(s -> s)
+                .toArray(String[]::new)
+        );
 
         List<ElementHandle> stateElements = this.page.querySelectorAll(widgetsSelector);
 
@@ -71,8 +75,11 @@ public class PlaywrightState extends PlaywrightWidget implements State {
 
     public PlaywrightWidget getWidgetFromCssSelector(String cssSelector) {
         ElementHandle elementHandle = this.page.querySelector(cssSelector);
-        if(elementHandle != null) return new PlaywrightWidget(this, this, elementHandle);
-        else return null;
+        if (elementHandle != null) return new PlaywrightWidget(
+            this,
+            this,
+            elementHandle
+        ); else return null;
     }
 
     public byte[] getScreenshot() {
@@ -131,7 +138,6 @@ public class PlaywrightState extends PlaywrightWidget implements State {
 
     @SuppressWarnings("unchecked")
     public <T> T get(PlaywrightWidget w, Tag<T> t, T defaultValue) {
-
         Tag<T> stateManagementTag = StateManagementTags.getMappedTag(t);
         if (stateManagementTag != null) {
             t = stateManagementTag;
@@ -140,10 +146,8 @@ public class PlaywrightState extends PlaywrightWidget implements State {
         Object ret = w.tags.get(t);
 
         if (ret != null) {
-            return (T)ret;
-        }
-
-        else if (w.tags.containsKey(t)) {
+            return (T) ret;
+        } else if (w.tags.containsKey(t)) {
             return defaultValue;
         }
 
@@ -188,41 +192,42 @@ public class PlaywrightState extends PlaywrightWidget implements State {
         queryTags.addAll(tags.keySet());
         queryTags.addAll(Tags.tagSet());
 
-        Iterable<Tag<?>> ret = () -> new Iterator<>() {
-            final Iterator<Tag<?>> i = queryTags.iterator();
-            final PlaywrightWidget target = w;
-            Tag<?> next;
+        Iterable<Tag<?>> ret = () ->
+            new Iterator<>() {
+                final Iterator<Tag<?>> i = queryTags.iterator();
+                final PlaywrightWidget target = w;
+                Tag<?> next;
 
-            private Tag<?> fetchNext() {
-                if (next == null) {
-                    while (i.hasNext()) {
-                        next = i.next();
-                        if (target.get(next, null) != null) {
-                            return next;
+                private Tag<?> fetchNext() {
+                    if (next == null) {
+                        while (i.hasNext()) {
+                            next = i.next();
+                            if (target.get(next, null) != null) {
+                                return next;
+                            }
                         }
+                        next = null;
+                    }
+                    return next;
+                }
+
+                public boolean hasNext() {
+                    return fetchNext() != null;
+                }
+
+                public Tag<?> next() {
+                    Tag<?> ret1 = fetchNext();
+                    if (ret1 == null) {
+                        throw new NoSuchElementException();
                     }
                     next = null;
+                    return ret1;
                 }
-                return next;
-            }
 
-            public boolean hasNext() {
-                return fetchNext() != null;
-            }
-
-            public Tag<?> next() {
-                Tag<?> ret1 = fetchNext();
-                if (ret1 == null) {
-                    throw new NoSuchElementException();
+                public void remove() {
+                    throw new UnsupportedOperationException();
                 }
-                next = null;
-                return ret1;
-            }
-
-            public void remove() {
-                throw new UnsupportedOperationException();
-            }
-        };
+            };
         return ret;
     }
 

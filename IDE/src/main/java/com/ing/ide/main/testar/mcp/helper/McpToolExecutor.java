@@ -3,7 +3,6 @@ package com.ing.ide.main.testar.mcp.helper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ing.ide.main.testar.mcp.McpInterface;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -19,7 +18,6 @@ import java.util.Map;
  * records parameter order and JSON field names from {@link McpParam}, and at runtime invokes the matching method.
  */
 public final class McpToolExecutor<T> {
-
     private final T impl;
     private final ObjectMapper mapper;
     private final Map<String, Method> byName = new HashMap<>();
@@ -35,10 +33,9 @@ public final class McpToolExecutor<T> {
 
             String name = mcpMethod.name().isEmpty() ? m.getName() : mcpMethod.name();
             if (byName.putIfAbsent(name, m) != null) {
-                java.util.logging.Logger.getLogger(McpToolBuilder.class.getName()).log(
-                        java.util.logging.Level.SEVERE,
-                        "Duplicate mcpMethod name: " + name
-                );
+                java
+                    .util.logging.Logger.getLogger(McpToolBuilder.class.getName())
+                    .log(java.util.logging.Level.SEVERE, "Duplicate mcpMethod name: " + name);
                 continue;
             }
 
@@ -46,10 +43,9 @@ public final class McpToolExecutor<T> {
             for (Parameter p : m.getParameters()) {
                 McpParam mcpParam = p.getAnnotation(McpParam.class);
                 if (mcpParam == null) {
-                    java.util.logging.Logger.getLogger(McpToolBuilder.class.getName()).log(
-                            java.util.logging.Level.SEVERE,
-                            "Missing mcpParam on " + m
-                    );
+                    java
+                        .util.logging.Logger.getLogger(McpToolBuilder.class.getName())
+                        .log(java.util.logging.Level.SEVERE, "Missing mcpParam on " + m);
                     continue;
                 }
                 order.add(mcpParam.name());
@@ -65,10 +61,9 @@ public final class McpToolExecutor<T> {
     public Object execute(String functionName, String argumentsJson) throws Exception {
         Method m = byName.get(functionName);
         if (m == null) {
-            java.util.logging.Logger.getLogger(McpToolBuilder.class.getName()).log(
-                    java.util.logging.Level.SEVERE,
-                    "Unknown function: " + functionName
-            );
+            java
+                .util.logging.Logger.getLogger(McpToolBuilder.class.getName())
+                .log(java.util.logging.Level.SEVERE, "Unknown function: " + functionName);
             return "";
         }
 
@@ -81,8 +76,8 @@ public final class McpToolExecutor<T> {
         Parameter[] ps = m.getParameters();
         if (ps.length == 0) return new Object[0];
         JsonNode root = (argumentsJson == null || argumentsJson.isBlank())
-                ? mapper.createObjectNode()
-                : mapper.readTree(argumentsJson);
+            ? mapper.createObjectNode()
+            : mapper.readTree(argumentsJson);
 
         List<String> names = paramOrder.get(m);
         Object[] out = new Object[ps.length];

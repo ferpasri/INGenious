@@ -1,17 +1,15 @@
 package com.ing.ide.main.testar.playwright.system;
 
-import org.testar.monkey.alayer.Tag;
-import org.testar.monkey.alayer.TagsBase;
-
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import org.testar.monkey.alayer.Tag;
+import org.testar.monkey.alayer.TagsBase;
 
 public class PlaywrightTags extends TagsBase {
-
     protected static final Set<Tag<?>> wdTags = new HashSet<>();
 
-    private PlaywrightTags() { }
+    private PlaywrightTags() {}
 
     public static final Tag<String> WebId = from("WebId", String.class);
 
@@ -47,7 +45,10 @@ public class PlaywrightTags extends TagsBase {
 
     public static final Tag<String> WebLocatorCSS = from("WebLocatorCSS", String.class);
 
-    public static final Tag<String> WebLocatorPlaceholder = from("WebLocatorPlaceholder", String.class);
+    public static final Tag<String> WebLocatorPlaceholder = from(
+        "WebLocatorPlaceholder",
+        String.class
+    );
 
     public static final Tag<String> WebLocatorLabel = from("WebLocatorLabel", String.class);
 

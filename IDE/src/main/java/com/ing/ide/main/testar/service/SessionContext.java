@@ -3,13 +3,11 @@ package com.ing.ide.main.testar.service;
 import com.ing.ide.main.testar.TESTARDataWriter;
 import com.ing.ide.main.testar.playwright.system.PlaywrightSUT;
 import com.ing.ide.main.testar.playwright.system.PlaywrightState;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SessionContext {
-
     private final TESTARDataWriter dataWriter;
     private final List<String> executedActions = new ArrayList<>();
     private final List<ExecutedActionEntry> executedActionEntries = new ArrayList<>();
@@ -83,14 +81,19 @@ public class SessionContext {
     }
 
     public static final class ExecutedActionEntry {
-
         private final String bddStep;
         private final String actionType;
         private final String selector;
         private final String value;
         private final String description;
 
-        public ExecutedActionEntry(String bddStep, String actionType, String selector, String value, String description) {
+        public ExecutedActionEntry(
+            String bddStep,
+            String actionType,
+            String selector,
+            String value,
+            String description
+        ) {
             this.bddStep = bddStep;
             this.actionType = actionType;
             this.selector = selector;

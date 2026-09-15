@@ -23,5 +23,4 @@ public final class McpNames {
             throw new IllegalStateException("Cannot resolve method name", e);
         }
     }
-
 }

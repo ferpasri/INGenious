@@ -2,15 +2,13 @@ package com.ing.ide.main.testar.playwright.system;
 
 import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.Page;
+import java.io.Serializable;
+import java.util.*;
 import org.testar.monkey.Drag;
 import org.testar.monkey.Util;
 import org.testar.monkey.alayer.*;
 
-import java.io.Serializable;
-import java.util.*;
-
 public class PlaywrightWidget implements Widget, Serializable {
-
     PlaywrightState root;
     PlaywrightWidget parent;
     Map<Tag<?>, Object> tags = new HashMap<>();
@@ -20,29 +18,29 @@ public class PlaywrightWidget implements Widget, Serializable {
 
     // Define selectors for clickable elements
     protected final String[] clickableSelectors = {
-            "a",                       // Links
-            "button",                  // Buttons
-            "input[type='button']",    // Input button
-            "input[type='submit']",    // Input submit button
-            "input[type='reset']",     // Input reset button
-            "input[type='checkbox']",  // Checkbox inputs
-            "input[type='radio']",     // Radio button inputs
-            "[onclick]",               // Elements with onclick attributes (custom clickable elements)
-            "[role='button']"          // Elements with a role attribute as buttons (often used in modern UIs)
+        "a", // Links
+        "button", // Buttons
+        "input[type='button']", // Input button
+        "input[type='submit']", // Input submit button
+        "input[type='reset']", // Input reset button
+        "input[type='checkbox']", // Checkbox inputs
+        "input[type='radio']", // Radio button inputs
+        "[onclick]", // Elements with onclick attributes (custom clickable elements)
+        "[role='button']" // Elements with a role attribute as buttons (often used in modern UIs)
     };
 
     // Define selectors for fillable elements
     protected final String[] fillableSelectors = {
-            "input[type='text']",      // Text input fields
-            "textarea",                // Text areas
-            "input[class='input']",    // Input fields
-            "input[type='email']",     // Email input fields
-            "input[type='password']"   // Password input fields
+        "input[type='text']", // Text input fields
+        "textarea", // Text areas
+        "input[class='input']", // Input fields
+        "input[type='email']", // Email input fields
+        "input[type='password']" // Password input fields
     };
 
     // Define selectors for selectable elements
     protected final String[] selectableSelectors = {
-            "select"                   // Dropdowns
+        "select" // Dropdowns
     };
 
     protected PlaywrightWidget(PlaywrightState state, PlaywrightWidget parent) {
@@ -54,12 +52,23 @@ public class PlaywrightWidget implements Widget, Serializable {
         }
     }
 
-    public PlaywrightWidget(PlaywrightState state, PlaywrightWidget parent, ElementHandle elementHandle) {
+    public PlaywrightWidget(
+        PlaywrightState state,
+        PlaywrightWidget parent,
+        ElementHandle elementHandle
+    ) {
         this(state, parent);
-
         this.elementHandle = elementHandle;
         Page statePage = state.getPage();
-        this.set(Tags.Shape, Rect.fromCoordinates(0, 0, statePage.viewportSize().width, statePage.viewportSize().height));
+        this.set(
+                Tags.Shape,
+                Rect.fromCoordinates(
+                    0,
+                    0,
+                    statePage.viewportSize().width,
+                    statePage.viewportSize().height
+                )
+            );
         this.set(Tags.Role, Roles.Widget);
 
         loadAttributes(elementHandle);
@@ -73,45 +82,45 @@ public class PlaywrightWidget implements Widget, Serializable {
     private void loadAttributes(ElementHandle element) {
         // Evaluate a JavaScript function inside the browser context to extract multiple attributes
         Object result = element.evaluate(
-                "(el, selectors) => {" +
-                        // Unpack clickable and fillable selectors
-                        "  const [clickable, fillable] = selectors;" +
-                        // Custom function to check visibility
-                        "  const style = window.getComputedStyle(el);" +
-                        "  const hasBox = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);" +
-                        "  let visible = false;" +
-                        "  if (style && hasBox && style.visibility !== 'hidden' && style.display !== 'none' && parseFloat(style.opacity || '1') !== 0) {" +
-                        "    visible = true;" +
-                        "    let p = el.parentElement;" +
-                        "    while (p && visible) {" +
-                        "      const ps = window.getComputedStyle(p);" +
-                        "      if (ps.display === 'none' || ps.visibility === 'hidden') visible = false;" +
-                        "      p = p.parentElement;" +
-                        "    }" +
-                        "  }" +
-                        // Return the collected attributes
-                        "  return {" +
-                        "    id: el.id || ''," +
-                        "    name: el.name || ''," +
-                        "    tagName: (el.tagName || '').toLowerCase()," +
-                        "    textContent: el.textContent || ''," +
-                        "    value: el.value || ''," +
-                        "    placeholder: el.getAttribute('placeholder') || ''," +
-                        "    ariaLabel: el.getAttribute('aria-label') || ''," +
-                        "    role: el.getAttribute('role') || ''," +
-                        "    href: el.getAttribute('href') || ''," +
-                        "    type: el.getAttribute('type') || ''," +
-                        "    title: el.getAttribute('title') || ''," +
-                        "    innerText: el.innerText || ''," +
-                        "    isClickable: el.matches(clickable)," +
-                        "    isFillable: el.matches(fillable)," +
-                        "    isVisible: visible" +
-                        "  };" +
-                        "}",
-                Arrays.asList(
-                        String.join(", ", clickableSelectors),
-                        String.join(", ", fillableSelectors)
-                )
+            "(el, selectors) => {" +
+            // Unpack clickable and fillable selectors
+            "  const [clickable, fillable] = selectors;" +
+            // Custom function to check visibility
+            "  const style = window.getComputedStyle(el);" +
+            "  const hasBox = !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);" +
+            "  let visible = false;" +
+            "  if (style && hasBox && style.visibility !== 'hidden' && style.display !== 'none' && parseFloat(style.opacity || '1') !== 0) {" +
+            "    visible = true;" +
+            "    let p = el.parentElement;" +
+            "    while (p && visible) {" +
+            "      const ps = window.getComputedStyle(p);" +
+            "      if (ps.display === 'none' || ps.visibility === 'hidden') visible = false;" +
+            "      p = p.parentElement;" +
+            "    }" +
+            "  }" +
+            // Return the collected attributes
+            "  return {" +
+            "    id: el.id || ''," +
+            "    name: el.name || ''," +
+            "    tagName: (el.tagName || '').toLowerCase()," +
+            "    textContent: el.textContent || ''," +
+            "    value: el.value || ''," +
+            "    placeholder: el.getAttribute('placeholder') || ''," +
+            "    ariaLabel: el.getAttribute('aria-label') || ''," +
+            "    role: el.getAttribute('role') || ''," +
+            "    href: el.getAttribute('href') || ''," +
+            "    type: el.getAttribute('type') || ''," +
+            "    title: el.getAttribute('title') || ''," +
+            "    innerText: el.innerText || ''," +
+            "    isClickable: el.matches(clickable)," +
+            "    isFillable: el.matches(fillable)," +
+            "    isVisible: visible" +
+            "  };" +
+            "}",
+            Arrays.asList(
+                String.join(", ", clickableSelectors),
+                String.join(", ", fillableSelectors)
+            )
         );
 
         Map<String, Object> attributes = (Map<String, Object>) result;
@@ -135,7 +144,14 @@ public class PlaywrightWidget implements Widget, Serializable {
 
         // TODO: Change by a configurable abstraction mechanism
         this.set(Tags.AbstractID, attributes.get("id") + "_" + attributes.get("name"));
-        this.set(Tags.ConcreteID, attributes.get("id") + "_" + attributes.get("name") + "_" + attributes.get("textContent"));
+        this.set(
+                Tags.ConcreteID,
+                attributes.get("id") +
+                "_" +
+                attributes.get("name") +
+                "_" +
+                attributes.get("textContent")
+            );
     }
 
     private void loadLocators(ElementHandle element) {
@@ -164,7 +180,7 @@ public class PlaywrightWidget implements Widget, Serializable {
         this.set(PlaywrightTags.WebChainedLocator, "");
     }
 
-    final public void moveTo(Widget p, int idx) {
+    public final void moveTo(Widget p, int idx) {
         root.setParent(this, p, idx);
     }
 

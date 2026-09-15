@@ -3,7 +3,6 @@ package com.ing.engine.cli.commands.testar.daemon;
 import com.ing.engine.cli.commands.testar.TestarBackendLoader;
 import com.ing.ingenious.api.contract.testar.TestarBackendApi;
 import com.ing.ingenious.api.contract.testar.TestarResult;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -14,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class TestarCliDaemonServer {
-
     private static final String DAEMON_MODE_PROPERTY = "ingenious.testar.daemon";
 
     private TestarBackendApi backend;
@@ -48,8 +46,10 @@ public final class TestarCliDaemonServer {
     }
 
     private void handle(Socket socket) throws IOException {
-        try (DataInputStream input = new DataInputStream(socket.getInputStream());
-             DataOutputStream output = new DataOutputStream(socket.getOutputStream())) {
+        try (
+            DataInputStream input = new DataInputStream(socket.getInputStream());
+            DataOutputStream output = new DataOutputStream(socket.getOutputStream())
+        ) {
             String command = input.readUTF();
             int argumentCount = input.readInt();
             List<String> arguments = new ArrayList<>(argumentCount);
@@ -99,69 +99,133 @@ public final class TestarCliDaemonServer {
                 return wrapResult(requireBackend().getStateImage());
             }
             if ("action.click".equals(command)) {
-                return wrapResult(requireBackend().executeClickAction(request.argumentAt(0), request.argumentAt(1)));
+                return wrapResult(
+                    requireBackend()
+                        .executeClickAction(request.argumentAt(0), request.argumentAt(1))
+                );
             }
             if ("action.fill".equals(command)) {
-                return wrapResult(requireBackend().executeFillAction(request.argumentAt(0), request.argumentAt(1), request.argumentAt(2)));
+                return wrapResult(
+                    requireBackend()
+                        .executeFillAction(
+                            request.argumentAt(0),
+                            request.argumentAt(1),
+                            request.argumentAt(2)
+                        )
+                );
             }
             if ("action.select".equals(command)) {
-                return wrapResult(requireBackend().executeSelectAction(request.argumentAt(0), request.argumentAt(1), request.argumentAt(2)));
+                return wrapResult(
+                    requireBackend()
+                        .executeSelectAction(
+                            request.argumentAt(0),
+                            request.argumentAt(1),
+                            request.argumentAt(2)
+                        )
+                );
             }
             if ("action.history".equals(command)) {
                 return wrapResult(requireBackend().getExecutedActions());
             }
             if ("assert.add".equals(command)) {
-                return wrapResult(requireBackend().addAssert(request.argumentAt(0), request.argumentAt(1)));
+                return wrapResult(
+                    requireBackend().addAssert(request.argumentAt(0), request.argumentAt(1))
+                );
             }
             if ("daemon.ping".equals(command)) {
-                return withDaemonMetadata(new TestarCliResponse(0, List.of("status=ready")), backend != null);
+                return withDaemonMetadata(
+                    new TestarCliResponse(0, List.of("status=ready")),
+                    backend != null
+                );
             }
         } catch (RuntimeException exception) {
-            return withDaemonMetadata(new TestarCliResponse(1, List.of(
-                    "status=error",
-                    "message=" + sanitize(exception.getMessage() != null ? exception.getMessage() : "Unknown daemon error.")
-            )), backend != null);
+            return withDaemonMetadata(
+                new TestarCliResponse(
+                    1,
+                    List.of(
+                        "status=error",
+                        "message=" +
+                        sanitize(
+                            exception.getMessage() != null
+                                ? exception.getMessage()
+                                : "Unknown daemon error."
+                        )
+                    )
+                ),
+                backend != null
+            );
         }
 
         return withDaemonMetadata(
-                new TestarCliResponse(1, List.of("status=error", "message=Unknown TESTAR daemon command: " + command)),
-                backend != null
+            new TestarCliResponse(
+                1,
+                List.of("status=error", "message=Unknown TESTAR daemon command: " + command)
+            ),
+            backend != null
         );
     }
 
     private TestarCliResponse startSession(TestarCliRequest request) {
         String projectPath = request.argumentAt(0);
         String bddScenarioName = request.argumentAt(1);
-        String bddInstructions = request.getArguments().size() >= 5 ? request.argumentAt(2) : (request.getArguments().size() >= 4 ? request.argumentAt(2) : "");
+        String bddInstructions = request.getArguments().size() >= 5
+            ? request.argumentAt(2)
+            : (request.getArguments().size() >= 4 ? request.argumentAt(2) : "");
         String bddScenarioSource = request.getArguments().size() >= 5 ? request.argumentAt(3) : "";
         String url = request.getArguments().size() >= 5
-                ? request.argumentAt(4)
-                : (request.getArguments().size() >= 4 ? request.argumentAt(3) : request.argumentAt(2));
+            ? request.argumentAt(4)
+            : (request.getArguments().size() >= 4 ? request.argumentAt(3) : request.argumentAt(2));
 
         if (projectPath == null || projectPath.trim().isEmpty()) {
-            return new TestarCliResponse(1, List.of("status=error", "message=Project path required."));
+            return new TestarCliResponse(
+                1,
+                List.of("status=error", "message=Project path required.")
+            );
         }
         if (url == null || url.trim().isEmpty()) {
-            return new TestarCliResponse(1, List.of("status=error", "message=Session URL required."));
+            return new TestarCliResponse(
+                1,
+                List.of("status=error", "message=Session URL required.")
+            );
         }
 
         stopBackendQuietly();
         backend = TestarBackendLoader.load();
         if (backend == null) {
-            return new TestarCliResponse(1, List.of("status=error", "message=No TESTAR automation backend available on the classpath."));
+            return new TestarCliResponse(
+                1,
+                List.of(
+                    "status=error",
+                    "message=No TESTAR automation backend available on the classpath."
+                )
+            );
         }
 
-        return withDaemonMetadata(wrapResult(backend.startSession(projectPath, bddScenarioName, bddInstructions, bddScenarioSource, url)), true);
+        return withDaemonMetadata(
+            wrapResult(
+                backend.startSession(
+                    projectPath,
+                    bddScenarioName,
+                    bddInstructions,
+                    bddScenarioSource,
+                    url
+                )
+            ),
+            true
+        );
     }
 
     private TestarCliResponse sessionStatus() {
         if (backend == null) {
             return withDaemonMetadata(
-                    new TestarCliResponse(0, List.of(
-                            "status=idle",
-                            "message=TESTAR daemon is running with no active session."
-                    )),
-                    false
+                new TestarCliResponse(
+                    0,
+                    List.of(
+                        "status=idle",
+                        "message=TESTAR daemon is running with no active session."
+                    )
+                ),
+                false
             );
         }
 
@@ -170,10 +234,10 @@ public final class TestarCliDaemonServer {
 
     private TestarCliResponse stopSessionAndShutdownDaemon() {
         if (backend == null) {
-            return new TestarCliResponse(0, List.of(
-                    "status=stopped",
-                    "message=TESTAR daemon stopped."
-            ));
+            return new TestarCliResponse(
+                0,
+                List.of("status=stopped", "message=TESTAR daemon stopped.")
+            );
         }
 
         TestarCliResponse response = wrapResult(backend.stopSession());
@@ -183,14 +247,19 @@ public final class TestarCliDaemonServer {
 
     private TestarBackendApi requireBackend() {
         if (backend == null) {
-            throw new IllegalStateException("No active TESTAR daemon session. Start one with 'ingenious testar session start'.");
+            throw new IllegalStateException(
+                "No active TESTAR daemon session. Start one with 'ingenious testar session start'."
+            );
         }
         return backend;
     }
 
     private TestarCliResponse wrapResult(TestarResult result) {
         if (result == null) {
-            return new TestarCliResponse(1, List.of("status=error", "message=No TESTAR backend result available."));
+            return new TestarCliResponse(
+                1,
+                List.of("status=error", "message=No TESTAR backend result available.")
+            );
         }
 
         List<String> lines = new ArrayList<>();
@@ -199,7 +268,11 @@ public final class TestarCliDaemonServer {
         if (result.getMessage() != null && !result.getMessage().isEmpty()) {
             lines.add("message=" + sanitize(result.getMessage()));
         }
-        if (result.getPayload() != null && !result.getPayload().isEmpty() && !result.getPayload().equals(result.getMessage())) {
+        if (
+            result.getPayload() != null &&
+            !result.getPayload().isEmpty() &&
+            !result.getPayload().equals(result.getMessage())
+        ) {
             lines.add("payload=" + sanitize(result.getPayload()));
         }
         return new TestarCliResponse(result.isSuccess() ? 0 : 1, lines);
@@ -254,7 +327,10 @@ public final class TestarCliDaemonServer {
         return value.replace("\r", "\\r").replace("\n", "\\n");
     }
 
-    private TestarCliResponse withDaemonMetadata(TestarCliResponse response, boolean activeSession) {
+    private TestarCliResponse withDaemonMetadata(
+        TestarCliResponse response,
+        boolean activeSession
+    ) {
         List<String> lines = new ArrayList<>(response.getLines());
         lines.add("daemonPid=" + daemonPid);
         lines.add("daemonActiveSession=" + activeSession);

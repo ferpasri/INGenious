@@ -6,18 +6,23 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.ing.datalib.component.EnvTestData;
 import com.ing.datalib.component.Project;
 import com.ing.datalib.component.Scenario;
 import com.ing.datalib.component.TestCase;
+import com.ing.datalib.component.TestData;
 import com.ing.datalib.component.TestStep;
 import com.ing.datalib.or.common.ObjectGroup;
 import com.ing.datalib.or.web.WebORObject;
 import com.ing.datalib.or.web.WebORPage;
-import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
+import com.ing.datalib.testdata.model.Record;
+import com.ing.datalib.testdata.model.TestDataModel;
 import com.ing.ide.main.testar.playwright.system.PlaywrightState;
+import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,11 +31,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 public class TESTARDataWriterTest {
-
     private Path tempDir;
 
     @AfterMethod
@@ -39,15 +44,18 @@ public class TESTARDataWriterTest {
             return;
         }
 
-        Files.walk(tempDir)
-                .sorted(Comparator.reverseOrder())
-                .forEach(path -> {
+        Files
+            .walk(tempDir)
+            .sorted(Comparator.reverseOrder())
+            .forEach(
+                path -> {
                     try {
                         Files.deleteIfExists(path);
                     } catch (IOException exception) {
                         throw new RuntimeException(exception);
                     }
-                });
+                }
+            );
     }
 
     @Test
@@ -55,18 +63,18 @@ public class TESTARDataWriterTest {
         TESTARDataWriter writer = createWriter();
         Page page = mockPage("Request Loan");
         PlaywrightWidget widget = mockWidget(
-                "Apply Now",
-                "button",
-                "",
-                "",
-                "button",
-                "button",
-                "//button[@id='apply']",
-                "#apply",
-                "",
-                "",
-                "Apply title",
-                "apply-button"
+            "Apply Now",
+            "button",
+            "",
+            "",
+            "button",
+            "button",
+            "//button[@id='apply']",
+            "#apply",
+            "",
+            "",
+            "Apply title",
+            "apply-button"
         );
 
         WebORObject object = writer.addWidgetObject(widget, page);
@@ -89,39 +97,39 @@ public class TESTARDataWriterTest {
         Page page = mockPage("Request Loan");
 
         WebORObject firstObject = writer.addWidgetObject(
-                mockWidget(
-                        "Apply Now",
-                        "button",
-                        "",
-                        "",
-                        "button",
-                        "button",
-                        "//button[@id='apply']",
-                        "#apply",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "Apply Now",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='apply']",
+                "#apply",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         WebORObject secondObject = writer.addWidgetObject(
-                mockWidget(
-                        "Cancel",
-                        "button",
-                        "",
-                        "",
-                        "button",
-                        "button",
-                        "//button[@id='cancel']",
-                        "#cancel",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "Cancel",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='cancel']",
+                "#cancel",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         WebORPage firstPage = (WebORPage) firstObject.getParent().getParent();
@@ -138,18 +146,18 @@ public class TESTARDataWriterTest {
         TESTARDataWriter writer = createWriter();
         Page page = mockPage("Request Loan");
         PlaywrightWidget widget = mockWidget(
-                "Apply Now",
-                "button",
-                "",
-                "",
-                "button",
-                "button",
-                "//button[@id='apply']",
-                "#apply",
-                "",
-                "",
-                "",
-                ""
+            "Apply Now",
+            "button",
+            "",
+            "",
+            "button",
+            "button",
+            "//button[@id='apply']",
+            "#apply",
+            "",
+            "",
+            "",
+            ""
         );
 
         WebORObject firstObject = writer.addWidgetObject(widget, page);
@@ -170,21 +178,21 @@ public class TESTARDataWriterTest {
         PlaywrightState state = mockState(page);
 
         WebORObject widgetObject = writer.addWidgetObject(
-                mockWidget(
-                        "Log In",
-                        "input",
-                        "submit",
-                        "",
-                        "",
-                        "",
-                        "//input[@type='submit']",
-                        "[type='submit']",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "Log In",
+                "input",
+                "submit",
+                "",
+                "",
+                "",
+                "//input[@type='submit']",
+                "[type='submit']",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         writer.addAssertTestStep("Given the page is open", state, "Customer Login");
@@ -193,9 +201,13 @@ public class TESTARDataWriterTest {
 
         assertThat(webORPage.getObjectGroups()).hasSize(2);
         assertThat(webORPage.getObjectGroupByName("assertCustomerL[text]")).isNotNull();
-        assertThat(webORPage.getObjectGroupByName("assertCustomerL[text]")
-                .getObjectByName("assertCustomerL[text]")
-                .getAttributeByName("Text")).isEqualTo("Customer Login");
+        assertThat(
+                webORPage
+                    .getObjectGroupByName("assertCustomerL[text]")
+                    .getObjectByName("assertCustomerL[text]")
+                    .getAttributeByName("Text")
+            )
+            .isEqualTo("Customer Login");
     }
 
     @Test
@@ -206,21 +218,21 @@ public class TESTARDataWriterTest {
 
         writer.addAssertTestStep("Given the page is open", state, "Customer Login");
         WebORObject widgetObject = writer.addWidgetObject(
-                mockWidget(
-                        "username",
-                        "input",
-                        "text",
-                        "",
-                        "",
-                        "",
-                        "//input[@type='text']",
-                        "[type='text']",
-                        "",
-                        "",
-                        "",
-                        ""
-                ),
-                page
+            mockWidget(
+                "username",
+                "input",
+                "text",
+                "",
+                "",
+                "",
+                "//input[@type='text']",
+                "[type='text']",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
         );
 
         WebORPage webORPage = (WebORPage) widgetObject.getParent().getParent();
@@ -230,7 +242,27 @@ public class TESTARDataWriterTest {
         assertThat(webORPage.getObjectGroupByName("username[input]")).isNotNull();
     }
 
+    @Test
+    public void testInputsFromOneExecutionShareOneDataRow() throws IOException {
+        InMemoryTestDataModel testDataModel = new InMemoryTestDataModel();
+        TESTARDataWriter writer = createWriter(testDataModel);
+
+        writer.addConcreteTestStep("username[input]", "", "Fill", "@user", "");
+        writer.addConcreteTestStep("password[input]", "", "Fill", "@pass", "");
+
+        assertThat(testDataModel.getRecords()).hasSize(1);
+        Record record = testDataModel.getRecords().get(0);
+        assertThat(record.get(testDataModel.getColumnIndex("username[input]_Fill")))
+            .isEqualTo("user");
+        assertThat(record.get(testDataModel.getColumnIndex("password[input]_Fill")))
+            .isEqualTo("pass");
+    }
+
     private TESTARDataWriter createWriter() throws IOException {
+        return createWriter(null);
+    }
+
+    private TESTARDataWriter createWriter(TestDataModel testDataModel) throws IOException {
         tempDir = Files.createTempDirectory("ingenious-testar-writer-test");
         Project project = mock(Project.class);
         Scenario bddScenario = mock(Scenario.class);
@@ -241,22 +273,84 @@ public class TESTARDataWriterTest {
         when(project.getLocation()).thenReturn(tempDir.toString());
         when(project.addScenario("BDD-MCP_scenario")).thenReturn(bddScenario);
         when(project.getScenarioByName("BDD-MCP_scenario")).thenReturn(bddScenario);
+        when(bddScenario.getName()).thenReturn("BDD-MCP_scenario");
         when(project.getReusableScenarioByName(anyString())).thenReturn(null);
         when(project.addReusableScenario(anyString())).thenReturn(reusableScenario);
-        when(bddScenario.addTestCase(anyString())).thenAnswer(invocation ->
-                createMockTestCase(invocation.getArgument(0, String.class))
-        );
-        when(reusableScenario.getTestCaseByName(anyString())).thenAnswer(invocation ->
-                reusableTestCases.get(invocation.getArgument(0, String.class))
-        );
-        when(reusableScenario.addTestCase(anyString())).thenAnswer(invocation -> {
-            String testCaseName = invocation.getArgument(0, String.class);
-            TestCase testCase = createMockTestCase(testCaseName);
-            reusableTestCases.put(testCaseName, testCase);
-            return testCase;
-        });
+        if (testDataModel != null) {
+            EnvTestData envTestData = mock(EnvTestData.class);
+            TestData defaultTestData = mock(TestData.class);
+            when(project.getTestData()).thenReturn(envTestData);
+            when(envTestData.defData()).thenReturn(defaultTestData);
+            when(defaultTestData.getByName(anyString())).thenReturn(testDataModel);
+        }
+        when(bddScenario.addTestCase(anyString()))
+            .thenAnswer(invocation -> createMockTestCase(invocation.getArgument(0, String.class)));
+        when(reusableScenario.getTestCaseByName(anyString()))
+            .thenAnswer(
+                invocation -> reusableTestCases.get(invocation.getArgument(0, String.class))
+            );
+        when(reusableScenario.addTestCase(anyString()))
+            .thenAnswer(
+                invocation -> {
+                    String testCaseName = invocation.getArgument(0, String.class);
+                    TestCase testCase = createMockTestCase(testCaseName);
+                    reusableTestCases.put(testCaseName, testCase);
+                    return testCase;
+                }
+            );
 
         return new TESTARDataWriter(project, "Loan Scenario");
+    }
+
+    private static class InMemoryTestDataModel extends TestDataModel {
+
+        private InMemoryTestDataModel() {
+            super("", false);
+            setColumns(Record.HEADERS);
+        }
+
+        @Override
+        public Record getNewRecord() {
+            return new Record();
+        }
+
+        @Override
+        public Set<String> loadColumns(File location) {
+            return Set.of(Record.HEADERS);
+        }
+
+        @Override
+        public TestDataModel loadRecords(File location) {
+            return this;
+        }
+
+        @Override
+        public Set<String> loadColumns() {
+            return Set.of(Record.HEADERS);
+        }
+
+        @Override
+        public TestDataModel loadRecords() {
+            return this;
+        }
+
+        @Override
+        public Boolean rename(String newName) {
+            return true;
+        }
+
+        @Override
+        public Boolean delete() {
+            return true;
+        }
+
+        @Override
+        public void saveChanges() {}
+
+        @Override
+        public String getName() {
+            return "InMemoryTestData";
+        }
     }
 
     private TestCase createMockTestCase(String testCaseName) {
@@ -265,11 +359,14 @@ public class TESTARDataWriterTest {
 
         when(testCase.getName()).thenReturn(testCaseName);
         when(testCase.getTestSteps()).thenReturn(testSteps);
-        when(testCase.addNewStep()).thenAnswer(invocation -> {
-            TestStep testStep = mock(TestStep.class);
-            testSteps.add(testStep);
-            return testStep;
-        });
+        when(testCase.addNewStep())
+            .thenAnswer(
+                invocation -> {
+                    TestStep testStep = mock(TestStep.class);
+                    testSteps.add(testStep);
+                    return testStep;
+                }
+            );
 
         return testCase;
     }
@@ -293,18 +390,18 @@ public class TESTARDataWriterTest {
     }
 
     private PlaywrightWidget mockWidget(
-            String innerText,
-            String tagName,
-            String type,
-            String locatorText,
-            String role,
-            String locatorRole,
-            String xpath,
-            String css,
-            String placeholder,
-            String altText,
-            String title,
-            String testId
+        String innerText,
+        String tagName,
+        String type,
+        String locatorText,
+        String role,
+        String locatorRole,
+        String xpath,
+        String css,
+        String placeholder,
+        String altText,
+        String title,
+        String testId
     ) {
         PlaywrightWidget widget = mock(PlaywrightWidget.class);
 

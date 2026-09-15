@@ -1,7 +1,6 @@
 package com.ing.engine.cli.commands.testar.daemon;
 
 final class TestarCliDaemonConfig {
-
     static final String HOST = "127.0.0.1";
     static final int PORT = 47328;
     static final int START_TIMEOUT_MS = 15000;
@@ -10,6 +9,5 @@ final class TestarCliDaemonConfig {
     static final long RETRY_DELAY_MS = 200L;
     static final String LOG_FILE_NAME = "testar-cli-daemon.log";
 
-    private TestarCliDaemonConfig() {
-    }
+    private TestarCliDaemonConfig() {}
 }

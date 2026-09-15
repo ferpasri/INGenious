@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public final class BddStepTracker {
-
     private final List<String> originalBddStepsList;
     private final List<String> executedSteps = new ArrayList<>();
 
@@ -17,30 +16,37 @@ public final class BddStepTracker {
 
     private List<String> parseBddInstructionList(String bddInstructions) {
         if (bddInstructions == null || bddInstructions.isBlank()) return Collections.emptyList();
-        return Arrays.stream(bddInstructions.split("\\r?\\n"))
-                .map(BddStepTracker::normalizeText)
-                .filter(s -> !s.isEmpty())
-                .collect(Collectors.toList());
+        return Arrays
+            .stream(bddInstructions.split("\\r?\\n"))
+            .map(BddStepTracker::normalizeText)
+            .filter(s -> !s.isEmpty())
+            .collect(Collectors.toList());
     }
 
     public Feedback validateBddStep(String bddStep) {
         String normalizedBddStep = normalizeText(bddStep);
 
         if (normalizedBddStep.isEmpty()) {
-            return Feedback.issue(Feedback.Code.BDD_STEP_EMPTY_OR_INVALID, "The provided BDD step is empty or invalid.");
+            return Feedback.issue(
+                Feedback.Code.BDD_STEP_EMPTY_OR_INVALID,
+                "The provided BDD step is empty or invalid."
+            );
         }
 
         if (!isOriginalBddInstruction(normalizedBddStep)) {
-            return Feedback.issue(Feedback.Code.BDD_STEP_NOT_IN_ORIGINAL_SCENARIO, "The provided BDD step does not seem to match with original BDD instructions.");
+            return Feedback.issue(
+                Feedback.Code.BDD_STEP_NOT_IN_ORIGINAL_SCENARIO,
+                "The provided BDD step does not seem to match with original BDD instructions."
+            );
         }
 
         // If the step is not the latest and was already executed, the mapping is trying to be done with an old previous step
         if (!isLatestBddStep(normalizedBddStep) && hasExecutedBddStep(normalizedBddStep)) {
             String message = String.format(
-                    "The provided BDD step '%s' is not the current or a new step. " +
-                    "This may create a mismatched BDD-action map. " + 
-                    "Please refine the BDD step or just continue with other appropiated BDD steps.",
-                    normalizedBddStep
+                "The provided BDD step '%s' is not the current or a new step. " +
+                "This may create a mismatched BDD-action map. " +
+                "Please refine the BDD step or just continue with other appropiated BDD steps.",
+                normalizedBddStep
             );
             return Feedback.issue(Feedback.Code.BDD_STEP_STALE_REUSE, message);
         }
@@ -89,11 +95,10 @@ public final class BddStepTracker {
         }
 
         return text
-                .replace('\u2018', '\'')
-                .replace('\u2019', '\'')
-                .replace('\u201C', '\'')
-                .replace('\u201D', '\'')
-                .trim();
+            .replace('\u2018', '\'')
+            .replace('\u2019', '\'')
+            .replace('\u201C', '\'')
+            .replace('\u201D', '\'')
+            .trim();
     }
-
 }

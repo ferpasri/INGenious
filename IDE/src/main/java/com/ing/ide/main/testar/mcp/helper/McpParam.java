@@ -6,6 +6,8 @@ import java.lang.annotation.*;
 @Target(ElementType.PARAMETER)
 public @interface McpParam {
     String name();
+
     String description();
+
     boolean required() default true;
 }
