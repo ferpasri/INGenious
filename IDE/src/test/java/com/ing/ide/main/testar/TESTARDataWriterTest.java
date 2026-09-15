@@ -172,6 +172,144 @@ public class TESTARDataWriterTest {
     }
 
     @Test
+    public void testSameWidgetNameWithDifferentLocatorsCreatesDifferentObjects()
+        throws IOException {
+        TESTARDataWriter writer = createWriter();
+        Page page = mockPage("Request Loan");
+
+        WebORObject firstObject = writer.addWidgetObject(
+            mockWidget(
+                "Continue",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='continue-a']",
+                "#continue-a",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
+        );
+        WebORObject secondObject = writer.addWidgetObject(
+            mockWidget(
+                "Continue",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='continue-b']",
+                "#continue-b",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
+        );
+
+        WebORPage webORPage = (WebORPage) firstObject.getParent().getParent();
+
+        assertThat(secondObject).isNotSameAs(firstObject);
+        assertThat(webORPage.getObjectGroups()).hasSize(2);
+        assertThat(firstObject.getAttributeByName("css")).isEqualTo("#continue-a");
+        assertThat(secondObject.getAttributeByName("css")).isEqualTo("#continue-b");
+        assertThat(secondObject.getName()).isEqualTo("Continue_2[button]");
+
+        Path pageFile = tempDir
+            .resolve("ObjectRepository")
+            .resolve("Web")
+            .resolve("Request Loan.yaml");
+        assertThat(Files.readString(pageFile))
+            .contains("Continue[button]:", "Continue_2[button]:", "#continue-a", "#continue-b");
+    }
+
+    @Test
+    public void testSameWidgetWithChangedDescriptionReusesMatchingLocator() throws IOException {
+        TESTARDataWriter writer = createWriter();
+        Page page = mockPage("Request Loan");
+
+        WebORObject firstObject = writer.addWidgetObject(
+            mockWidget(
+                "Continue",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='continue']",
+                "#continue",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
+        );
+        WebORObject secondObject = writer.addWidgetObject(
+            mockWidget(
+                "Continue to review",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "//button[@id='continue']",
+                "#continue",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
+        );
+
+        WebORPage webORPage = (WebORPage) firstObject.getParent().getParent();
+
+        assertThat(secondObject).isSameAs(firstObject);
+        assertThat(webORPage.getObjectGroups()).hasSize(1);
+        assertThat(secondObject.getName()).isEqualTo("Continue[button]");
+    }
+
+    @Test
+    public void testIncompleteWidgetObservationDoesNotClearExistingAttributes() throws IOException {
+        TESTARDataWriter writer = createWriter();
+        Page page = mockPage("Request Loan");
+
+        WebORObject firstObject = writer.addWidgetObject(
+            mockWidget(
+                "username",
+                "input",
+                "text",
+                "",
+                "textbox",
+                "textbox",
+                "//input[@id='username']",
+                "#username",
+                "Username",
+                "",
+                "",
+                "username"
+            ),
+            page
+        );
+        WebORObject secondObject = writer.addWidgetObject(
+            mockWidget("username", "input", "text", "", "", "", "", "", "", "", "", ""),
+            page
+        );
+
+        assertThat(secondObject).isSameAs(firstObject);
+        assertThat(secondObject.getAttributeByName("xpath")).isEqualTo("//input[@id='username']");
+        assertThat(secondObject.getAttributeByName("css")).isEqualTo("#username");
+        assertThat(secondObject.getAttributeByName("Placeholder")).isEqualTo("Username");
+        assertThat(secondObject.getAttributeByName("TestId")).isEqualTo("username");
+    }
+
+    @Test
     public void testAddAssertToExistingPageWithWidgets() throws IOException {
         TESTARDataWriter writer = createWriter();
         Page page = mockPage("Initial Page");
@@ -208,6 +346,12 @@ public class TESTARDataWriterTest {
                     .getAttributeByName("Text")
             )
             .isEqualTo("Customer Login");
+
+        Path pageFile = tempDir
+            .resolve("ObjectRepository")
+            .resolve("Web")
+            .resolve("Initial Page.yaml");
+        assertThat(Files.readString(pageFile)).contains("assertCustomerL[text]:", "Customer Login");
     }
 
     @Test
@@ -256,6 +400,27 @@ public class TESTARDataWriterTest {
             .isEqualTo("user");
         assertThat(record.get(testDataModel.getColumnIndex("password[input]_Fill")))
             .isEqualTo("pass");
+    }
+
+    @Test
+    public void testAssertTextsWithSamePrefixCreateDifferentObjects() throws IOException {
+        TESTARDataWriter writer = createWriter();
+        PlaywrightState state = mockState(mockPage("Loan Request"));
+
+        writer.addAssertTestStep("Given the page is open", state, "Loan Request A");
+        writer.addAssertTestStep("Then the result is shown", state, "Loan Request B");
+
+        Path pageFile = tempDir
+            .resolve("ObjectRepository")
+            .resolve("Web")
+            .resolve("Loan Request.yaml");
+        assertThat(Files.readString(pageFile))
+            .contains(
+                "assertLoanReque[text]:",
+                "assertLoanReque_2[text]:",
+                "Loan Request A",
+                "Loan Request B"
+            );
     }
 
     private TESTARDataWriter createWriter() throws IOException {
