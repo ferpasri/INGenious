@@ -1,11 +1,9 @@
 package com.ing.ide.main.testar.codex;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.nio.file.Path;
 
 public class CodexRunResult {
-
     private final boolean success;
     private final String status;
     private final String threadId;
@@ -14,13 +12,15 @@ public class CodexRunResult {
     private final Path runDirectory;
     private final Usage usage;
 
-    public CodexRunResult(boolean success,
-                          String status,
-                          String threadId,
-                          String finalResponse,
-                          String errorMessage,
-                          Path runDirectory,
-                          Usage usage) {
+    public CodexRunResult(
+        boolean success,
+        String status,
+        String threadId,
+        String finalResponse,
+        String errorMessage,
+        Path runDirectory,
+        Usage usage
+    ) {
         this.success = success;
         this.status = status != null ? status : "";
         this.threadId = threadId != null ? threadId : "";
@@ -65,15 +65,18 @@ public class CodexRunResult {
 
         StringBuilder message = new StringBuilder("Codex agent run completed.");
         if (usage != null) {
-            message.append(" Tokens: in=").append(usage.inputTokens)
-                    .append(", out=").append(usage.outputTokens)
-                    .append(", reasoning=").append(usage.reasoningOutputTokens);
+            message
+                .append(" Tokens: in=")
+                .append(usage.inputTokens)
+                .append(", out=")
+                .append(usage.outputTokens)
+                .append(", reasoning=")
+                .append(usage.reasoningOutputTokens);
         }
         return message.toString();
     }
 
     public static class Usage {
-
         @JsonProperty("input_tokens")
         public int inputTokens;
 
@@ -86,7 +89,6 @@ public class CodexRunResult {
         @JsonProperty("reasoning_output_tokens")
         public int reasoningOutputTokens;
 
-        public Usage() { }
+        public Usage() {}
     }
-
 }

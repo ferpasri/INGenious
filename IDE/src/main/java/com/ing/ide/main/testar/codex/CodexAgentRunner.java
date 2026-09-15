@@ -3,7 +3,6 @@ package com.ing.ide.main.testar.codex;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ing.datalib.component.Project;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,21 +23,27 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CodexAgentRunner {
-
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
-    private static final DateTimeFormatter RUN_TIMESTAMP =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss").withZone(ZoneId.systemDefault());
+    private static final DateTimeFormatter RUN_TIMESTAMP = DateTimeFormatter
+        .ofPattern("yyyy-MM-dd_HH-mm-ss")
+        .withZone(ZoneId.systemDefault());
 
-    public CodexRunResult run(Project project, CodexAgentSettings settings) throws IOException, InterruptedException {
+    public CodexRunResult run(Project project, CodexAgentSettings settings)
+        throws IOException, InterruptedException {
         RunningCodexRun run = start(project, settings, null);
         return run.awaitCompletion();
     }
 
-    public RunningCodexRun start(Project project,
-                                 CodexAgentSettings settings,
-                                 LogListener logListener) throws IOException {
+    public RunningCodexRun start(
+        Project project,
+        CodexAgentSettings settings,
+        LogListener logListener
+    )
+        throws IOException {
         if (project == null || project.getLocation() == null || project.getLocation().isBlank()) {
-            throw new IllegalStateException("Please open a project before running the Codex agent.");
+            throw new IllegalStateException(
+                "Please open a project before running the Codex agent."
+            );
         }
 
         Path releaseRoot = resolveReleaseRoot();
@@ -51,43 +56,62 @@ public class CodexAgentRunner {
         Path resultFile = runDirectory.resolve("result.json");
 
         Map<String, Object> request = new LinkedHashMap<>();
-        request.put("apiKeyEnvVarName", valueOrDefault(settings.apiKeyEnvVarName, "OPENAI_API_KEY"));
+        request.put(
+            "apiKeyEnvVarName",
+            valueOrDefault(settings.apiKeyEnvVarName, "OPENAI_API_KEY")
+        );
         request.put("baseUrl", valueOrEmpty(settings.baseUrl));
         request.put("model", valueOrDefault(settings.model, "gpt-5.4"));
         request.put("reasoningEffort", valueOrDefault(settings.reasoningEffort, "medium"));
         request.put("sandboxMode", valueOrDefault(settings.sandboxMode, "workspace-write"));
         request.put("approvalPolicy", valueOrDefault(settings.approvalPolicy, "never"));
-        request.put("networkAccessEnabled", settings.networkAccessEnabled != null && settings.networkAccessEnabled);
-        request.put("skipGitRepoCheck", settings.skipGitRepoCheck == null || settings.skipGitRepoCheck);
+        request.put(
+            "networkAccessEnabled",
+            settings.networkAccessEnabled != null && settings.networkAccessEnabled
+        );
+        request.put(
+            "skipGitRepoCheck",
+            settings.skipGitRepoCheck == null || settings.skipGitRepoCheck
+        );
         request.put("workingDirectory", releaseRoot.toAbsolutePath().normalize().toString());
-        request.put("additionalDirectories", additionalDirectories(releaseRoot, project.getLocation()));
-        request.put("prompt", buildExecutionPrompt(valueOrEmpty(settings.promptText), project.getLocation()));
+        request.put(
+            "additionalDirectories",
+            additionalDirectories(releaseRoot, project.getLocation())
+        );
+        request.put(
+            "prompt",
+            buildExecutionPrompt(valueOrEmpty(settings.promptText), project.getLocation())
+        );
         request.put("outputDirectory", runDirectory.toAbsolutePath().toString());
         JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValue(requestFile.toFile(), request);
 
         ProcessBuilder processBuilder = new ProcessBuilder(
-                "node",
-                releaseRoot.resolve("codex").resolve("ingenious-codex-runner.mjs").toString(),
-                requestFile.toString()
+            "node",
+            releaseRoot.resolve("codex").resolve("ingenious-codex-runner.mjs").toString(),
+            requestFile.toString()
         );
         processBuilder.directory(releaseRoot.toFile());
 
         Process process = processBuilder.start();
-        RunningCodexRun run = new RunningCodexRun(process, runDirectory, stdoutFile, stderrFile, resultFile, logListener);
+        RunningCodexRun run = new RunningCodexRun(
+            process,
+            runDirectory,
+            stdoutFile,
+            stderrFile,
+            resultFile,
+            logListener
+        );
         run.startStreaming();
         return run;
     }
 
     public interface LogListener {
-
         void onStdout(String line);
 
         void onStderr(String line);
-
     }
 
     public final class RunningCodexRun {
-
         private final Process process;
         private final Path runDirectory;
         private final Path stdoutFile;
@@ -97,12 +121,14 @@ public class CodexAgentRunner {
         private final AtomicBoolean stopRequested = new AtomicBoolean(false);
         private final CountDownLatch streamLatch = new CountDownLatch(2);
 
-        private RunningCodexRun(Process process,
-                                Path runDirectory,
-                                Path stdoutFile,
-                                Path stderrFile,
-                                Path resultFile,
-                                LogListener logListener) {
+        private RunningCodexRun(
+            Process process,
+            Path runDirectory,
+            Path stdoutFile,
+            Path stderrFile,
+            Path resultFile,
+            LogListener logListener
+        ) {
             this.process = process;
             this.runDirectory = runDirectory;
             this.stdoutFile = stdoutFile;
@@ -137,19 +163,21 @@ public class CodexAgentRunner {
 
             if (stopRequested.get() && !Files.exists(resultFile)) {
                 return new CodexRunResult(
-                        false,
-                        "cancelled",
-                        "",
-                        "",
-                        "Codex agent execution cancelled.",
-                        runDirectory,
-                        null
+                    false,
+                    "cancelled",
+                    "",
+                    "",
+                    "Codex agent execution cancelled.",
+                    runDirectory,
+                    null
                 );
             }
 
             if (!Files.exists(resultFile)) {
                 String stderr = Files.exists(stderrFile) ? Files.readString(stderrFile) : "";
-                throw new IllegalStateException("Codex runner did not produce result.json. " + stderr.trim());
+                throw new IllegalStateException(
+                    "Codex runner did not produce result.json. " + stderr.trim()
+                );
             }
 
             JsonNode root = JSON_MAPPER.readTree(resultFile.toFile());
@@ -171,13 +199,13 @@ public class CodexAgentRunner {
             }
 
             return new CodexRunResult(
-                    success,
-                    status,
-                    threadId,
-                    finalResponse,
-                    errorMessage,
-                    runDirectory,
-                    usage
+                success,
+                status,
+                threadId,
+                finalResponse,
+                errorMessage,
+                runDirectory,
+                usage
             );
         }
 
@@ -186,15 +214,15 @@ public class CodexAgentRunner {
             Files.deleteIfExists(stderrFile);
 
             Thread stdoutThread = new Thread(
-                    () -> consumeStream(process.getInputStream(), stdoutFile, false),
-                    "codex-runner-stdout"
+                () -> consumeStream(process.getInputStream(), stdoutFile, false),
+                "codex-runner-stdout"
             );
             stdoutThread.setDaemon(true);
             stdoutThread.start();
 
             Thread stderrThread = new Thread(
-                    () -> consumeStream(process.getErrorStream(), stderrFile, true),
-                    "codex-runner-stderr"
+                () -> consumeStream(process.getErrorStream(), stderrFile, true),
+                "codex-runner-stderr"
             );
             stderrThread.setDaemon(true);
             stderrThread.start();
@@ -202,7 +230,11 @@ public class CodexAgentRunner {
 
         private void consumeStream(InputStream inputStream, Path targetFile, boolean stderr) {
             List<String> lines = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            try (
+                BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(inputStream, StandardCharsets.UTF_8)
+                )
+            ) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     lines.add(line);
@@ -223,12 +255,16 @@ public class CodexAgentRunner {
         }
 
         private void destroyProcessTree(ProcessHandle processHandle) {
-            processHandle.descendants().forEach(child -> {
-                child.destroy();
-                if (child.isAlive()) {
-                    child.destroyForcibly();
-                }
-            });
+            processHandle
+                .descendants()
+                .forEach(
+                    child -> {
+                        child.destroy();
+                        if (child.isAlive()) {
+                            child.destroyForcibly();
+                        }
+                    }
+                );
         }
     }
 
@@ -245,25 +281,36 @@ public class CodexAgentRunner {
         }
 
         throw new IllegalStateException(
-                "Could not find the packaged Codex runtime. Build the release with the Dist npm install profile first."
+            "Could not find the packaged Codex runtime. Build the release with the Dist npm install profile first."
         );
     }
 
     private void validateRuntime(Path releaseRoot) {
         Path packageJson = releaseRoot.resolve("package.json");
-        Path nodeModules = releaseRoot.resolve("node_modules").resolve("@openai").resolve("codex-sdk").resolve("package.json");
+        Path nodeModules = releaseRoot
+            .resolve("node_modules")
+            .resolve("@openai")
+            .resolve("codex-sdk")
+            .resolve("package.json");
         if (!Files.exists(packageJson) || !Files.exists(nodeModules)) {
             throw new IllegalStateException(
-                    "Codex runtime dependencies are missing in the release folder. Run the Dist build with -Pnpm-install."
+                "Codex runtime dependencies are missing in the release folder. Run the Dist build with -Pnpm-install."
             );
         }
     }
 
-    private Path createRunDirectory(Project project, CodexAgentSettings settings) throws IOException {
+    private Path createRunDirectory(Project project, CodexAgentSettings settings)
+        throws IOException {
         String promptTitle = valueOrDefault(settings.promptTitle, "Codex Run");
         String safeName = promptTitle.replaceAll("[\\\\/?:*\"|><]", "_");
         String timestamp = RUN_TIMESTAMP.format(OffsetDateTime.now());
-        Path runDirectory = Paths.get(project.getLocation(), "Results", "Codex", "runs", safeName + "_" + timestamp);
+        Path runDirectory = Paths.get(
+            project.getLocation(),
+            "Results",
+            "Codex",
+            "runs",
+            safeName + "_" + timestamp
+        );
         Files.createDirectories(runDirectory);
         return runDirectory;
     }
@@ -284,19 +331,22 @@ public class CodexAgentRunner {
     private String buildExecutionPrompt(String userPrompt, String projectLocation) {
         Path projectPath = Paths.get(projectLocation).toAbsolutePath().normalize();
         String relativeProjectPath = projectPath.getFileName() != null
-                ? "Projects\\" + projectPath.getFileName()
-                : projectLocation;
+            ? "Projects\\" + projectPath.getFileName()
+            : projectLocation;
 
-        return String.join("\n",
-                "Codex execution context:",
-                "- You are running from the packaged INGenious runtime root.",
-                "- The current working directory already contains `ingenious-cli.bat` and `.agents`.",
-                "- Resolve BDD goals from `.agents/bdd_goals`.",
-                "- Pass INGenious project paths relative to the runtime root, for example `" + relativeProjectPath + "`.",
-                "- On Windows, when invoking the packaged CLI launcher, prefer `cmd /c \"ingenious-cli.bat ...\"` instead of direct PowerShell execution of the `.bat` file.",
-                "- Use the `ingenious-testar` skill instructions before driving TESTAR CLI commands.",
-                "",
-                userPrompt
+        return String.join(
+            "\n",
+            "Codex execution context:",
+            "- You are running from the packaged INGenious runtime root.",
+            "- The current working directory already contains `ingenious-cli.bat` and `.agents`.",
+            "- Resolve BDD goals from `.agents/bdd_goals`.",
+            "- Pass INGenious project paths relative to the runtime root, for example `" +
+            relativeProjectPath +
+            "`.",
+            "- On Windows, when invoking the packaged CLI launcher, prefer `cmd /c \"ingenious-cli.bat ...\"` instead of direct PowerShell execution of the `.bat` file.",
+            "- Use the `ingenious-testar` skill instructions before driving TESTAR CLI commands.",
+            "",
+            userPrompt
         );
     }
 
@@ -312,5 +362,4 @@ public class CodexAgentRunner {
     private String valueOrEmpty(String value) {
         return value == null ? "" : value.trim();
     }
-
 }

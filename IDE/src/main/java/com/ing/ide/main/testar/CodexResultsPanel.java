@@ -3,7 +3,6 @@ package com.ing.ide.main.testar;
 import com.ing.ide.main.mainui.AppMainFrame;
 import com.ing.ide.main.testar.codex.metrics.CodexMetricsDashboardWriter;
 import com.ing.ide.util.Notification;
-
 import java.awt.Desktop;
 import java.io.File;
 import java.nio.file.Files;
@@ -13,7 +12,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CodexResultsPanel {
-
     private static final Logger LOGGER = Logger.getLogger(CodexResultsPanel.class.getName());
 
     private final AppMainFrame sMainFrame;

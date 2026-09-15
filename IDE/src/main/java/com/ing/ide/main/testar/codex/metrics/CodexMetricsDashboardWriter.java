@@ -3,7 +3,6 @@ package com.ing.ide.main.testar.codex.metrics;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ing.engine.constants.AppResourcePath;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -20,9 +19,8 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 public class CodexMetricsDashboardWriter {
-
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<Map<String, Object>>() { };
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<Map<String, Object>>() {};
     private static final String DASHBOARD_TEMPLATE_HTML = "codex-dashboard.html";
     private static final String DASHBOARD_CSS = "codex-dashboard.css";
     private static final String DASHBOARD_JS = "codex-dashboard.js";
@@ -32,9 +30,10 @@ public class CodexMetricsDashboardWriter {
 
         List<Map<String, Object>> runs = loadRuns(codexRoot.resolve("runs"));
         Map<String, Object> dashboardData = buildDashboardData(runs);
-        String jsPayload = "window.CODEX_METRICS_DATA = "
-                + JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(dashboardData)
-                + ";";
+        String jsPayload =
+            "window.CODEX_METRICS_DATA = " +
+            JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(dashboardData) +
+            ";";
 
         Files.writeString(codexRoot.resolve("codex_metrics.js"), jsPayload, StandardCharsets.UTF_8);
         copyDashboardAssets(codexRoot);
@@ -47,12 +46,16 @@ public class CodexMetricsDashboardWriter {
         }
 
         try (Stream<Path> paths = Files.list(runsDir)) {
-            paths.filter(Files::isDirectory)
-                    .sorted()
-                    .forEach(runDir -> {
+            paths
+                .filter(Files::isDirectory)
+                .sorted()
+                .forEach(
+                    runDir -> {
                         try {
                             Map<String, Object> result = readJsonMap(runDir.resolve("result.json"));
-                            Map<String, Object> request = readJsonMap(runDir.resolve("request.json"));
+                            Map<String, Object> request = readJsonMap(
+                                runDir.resolve("request.json")
+                            );
                             if (result.isEmpty()) {
                                 return;
                             }
@@ -60,7 +63,8 @@ public class CodexMetricsDashboardWriter {
                         } catch (IOException exception) {
                             throw new RuntimeException(exception);
                         }
-                    });
+                    }
+                );
         } catch (RuntimeException exception) {
             if (exception.getCause() instanceof IOException) {
                 throw (IOException) exception.getCause();
@@ -72,9 +76,11 @@ public class CodexMetricsDashboardWriter {
         return runs;
     }
 
-    private Map<String, Object> normalizeRun(Path runDir,
-                                             Map<String, Object> result,
-                                             Map<String, Object> request) {
+    private Map<String, Object> normalizeRun(
+        Path runDir,
+        Map<String, Object> result,
+        Map<String, Object> request
+    ) {
         Map<String, Integer> itemTypeCounts = new LinkedHashMap<>();
         int commandCount = 0;
         int failedCommandCount = 0;
@@ -127,7 +133,10 @@ public class CodexMetricsDashboardWriter {
         run.put("networkAccessEnabled", booleanValue(request.get("networkAccessEnabled")));
         run.put("prompt", stringValue(result.get("prompt")));
         run.put("status", stringValue(result.get("status")));
-        run.put("completedSuccess", "completed".equalsIgnoreCase(stringValue(result.get("status"))));
+        run.put(
+            "completedSuccess",
+            "completed".equalsIgnoreCase(stringValue(result.get("status")))
+        );
         run.put("startedAt", startedAt);
         run.put("finishedAt", finishedAt);
         run.put("durationMs", durationMillis(startedAt, finishedAt));
@@ -174,19 +183,30 @@ public class CodexMetricsDashboardWriter {
         Map<String, GroupAggregate> byGroup = new LinkedHashMap<>();
 
         for (Map<String, Object> run : runs) {
-            String groupKey = stringValue(run.get("modelName"))
-                    + "||" + stringValue(run.get("reasoningEffort"))
-                    + "||" + stringValue(run.get("sandboxMode"))
-                    + "||" + stringValue(run.get("approvalPolicy"))
-                    + "||" + booleanValue(run.get("networkAccessEnabled"));
+            String groupKey =
+                stringValue(run.get("modelName")) +
+                "||" +
+                stringValue(run.get("reasoningEffort")) +
+                "||" +
+                stringValue(run.get("sandboxMode")) +
+                "||" +
+                stringValue(run.get("approvalPolicy")) +
+                "||" +
+                booleanValue(run.get("networkAccessEnabled"));
 
-            byGroup.computeIfAbsent(groupKey, key -> new GroupAggregate(
-                    stringValue(run.get("modelName")),
-                    stringValue(run.get("reasoningEffort")),
-                    stringValue(run.get("sandboxMode")),
-                    stringValue(run.get("approvalPolicy")),
-                    booleanValue(run.get("networkAccessEnabled"))
-            )).accept(run);
+            byGroup
+                .computeIfAbsent(
+                    groupKey,
+                    key ->
+                        new GroupAggregate(
+                            stringValue(run.get("modelName")),
+                            stringValue(run.get("reasoningEffort")),
+                            stringValue(run.get("sandboxMode")),
+                            stringValue(run.get("approvalPolicy")),
+                            booleanValue(run.get("networkAccessEnabled"))
+                        )
+                )
+                .accept(run);
         }
 
         List<Map<String, Object>> groups = new ArrayList<>();
@@ -196,8 +216,14 @@ public class CodexMetricsDashboardWriter {
 
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("totalRuns", runs.size());
-        summary.put("successfulRuns", runs.stream().filter(run -> booleanValue(run.get("completedSuccess"))).count());
-        summary.put("failedRuns", runs.stream().filter(run -> !booleanValue(run.get("completedSuccess"))).count());
+        summary.put(
+            "successfulRuns",
+            runs.stream().filter(run -> booleanValue(run.get("completedSuccess"))).count()
+        );
+        summary.put(
+            "failedRuns",
+            runs.stream().filter(run -> !booleanValue(run.get("completedSuccess"))).count()
+        );
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("summary", summary);
@@ -207,7 +233,10 @@ public class CodexMetricsDashboardWriter {
     }
 
     private void copyDashboardAssets(Path metricsRoot) throws IOException {
-        Path htmlSource = Paths.get(AppResourcePath.getReportTemplatePath(), DASHBOARD_TEMPLATE_HTML);
+        Path htmlSource = Paths.get(
+            AppResourcePath.getReportTemplatePath(),
+            DASHBOARD_TEMPLATE_HTML
+        );
         Path cssSource = Paths.get(AppResourcePath.getReportResourcePath(), "css", DASHBOARD_CSS);
         Path jsSource = Paths.get(AppResourcePath.getReportResourcePath(), "js", DASHBOARD_JS);
 
@@ -217,9 +246,21 @@ public class CodexMetricsDashboardWriter {
         Files.createDirectories(cssTargetDir);
         Files.createDirectories(jsTargetDir);
 
-        Files.copy(htmlSource, metricsRoot.resolve("dashboard.html"), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(cssSource, cssTargetDir.resolve(DASHBOARD_CSS), StandardCopyOption.REPLACE_EXISTING);
-        Files.copy(jsSource, jsTargetDir.resolve(DASHBOARD_JS), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(
+            htmlSource,
+            metricsRoot.resolve("dashboard.html"),
+            StandardCopyOption.REPLACE_EXISTING
+        );
+        Files.copy(
+            cssSource,
+            cssTargetDir.resolve(DASHBOARD_CSS),
+            StandardCopyOption.REPLACE_EXISTING
+        );
+        Files.copy(
+            jsSource,
+            jsTargetDir.resolve(DASHBOARD_JS),
+            StandardCopyOption.REPLACE_EXISTING
+        );
     }
 
     private Map<String, Object> readJsonMap(Path file) throws IOException {
@@ -279,14 +320,15 @@ public class CodexMetricsDashboardWriter {
             if (startedAt.isBlank() || finishedAt.isBlank()) {
                 return 0L;
             }
-            return Duration.between(OffsetDateTime.parse(startedAt), OffsetDateTime.parse(finishedAt)).toMillis();
+            return Duration
+                .between(OffsetDateTime.parse(startedAt), OffsetDateTime.parse(finishedAt))
+                .toMillis();
         } catch (Exception exception) {
             return 0L;
         }
     }
 
     private final class GroupAggregate {
-
         private final String modelName;
         private final String reasoningEffort;
         private final String sandboxMode;
@@ -300,11 +342,13 @@ public class CodexMetricsDashboardWriter {
         private long totalCompletedItems;
         private long totalFailedCommandCount;
 
-        private GroupAggregate(String modelName,
-                               String reasoningEffort,
-                               String sandboxMode,
-                               String approvalPolicy,
-                               boolean networkAccessEnabled) {
+        private GroupAggregate(
+            String modelName,
+            String reasoningEffort,
+            String sandboxMode,
+            String approvalPolicy,
+            boolean networkAccessEnabled
+        ) {
             this.modelName = modelName;
             this.reasoningEffort = reasoningEffort;
             this.sandboxMode = sandboxMode;
@@ -324,7 +368,11 @@ public class CodexMetricsDashboardWriter {
 
             Map<String, Object> counts = mapValue(run.get("itemTypeCounts"));
             for (Map.Entry<String, Object> entry : counts.entrySet()) {
-                itemTypeCounts.merge(entry.getKey(), (int) longValue(entry.getValue()), Integer::sum);
+                itemTypeCounts.merge(
+                    entry.getKey(),
+                    (int) longValue(entry.getValue()),
+                    Integer::sum
+                );
             }
         }
 
@@ -340,8 +388,14 @@ public class CodexMetricsDashboardWriter {
             map.put("successRate", totalRuns == 0 ? 0.0d : (100.0d * successfulRuns) / totalRuns);
             map.put("avgDurationMs", totalRuns == 0 ? 0L : totalDurationMs / totalRuns);
             map.put("avgTotalTokens", totalRuns == 0 ? 0L : totalTokens / totalRuns);
-            map.put("avgCompletedItems", totalRuns == 0 ? 0.0d : (double) totalCompletedItems / totalRuns);
-            map.put("avgFailedCommandCount", totalRuns == 0 ? 0.0d : (double) totalFailedCommandCount / totalRuns);
+            map.put(
+                "avgCompletedItems",
+                totalRuns == 0 ? 0.0d : (double) totalCompletedItems / totalRuns
+            );
+            map.put(
+                "avgFailedCommandCount",
+                totalRuns == 0 ? 0.0d : (double) totalFailedCommandCount / totalRuns
+            );
             map.put("itemTypeCounts", itemTypeCounts);
             return map;
         }

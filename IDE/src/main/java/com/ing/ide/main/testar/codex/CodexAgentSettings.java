@@ -1,7 +1,6 @@
 package com.ing.ide.main.testar.codex;
 
 public class CodexAgentSettings {
-
     public String apiKeyEnvVarName;
     public String baseUrl;
     public String model;
@@ -13,6 +12,5 @@ public class CodexAgentSettings {
     public String promptTitle;
     public String promptText;
 
-    public CodexAgentSettings() { }
-
+    public CodexAgentSettings() {}
 }
