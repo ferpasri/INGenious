@@ -75,6 +75,7 @@ Required arguments:
 - `ingenious-cli.bat testar state widgets`
 - `ingenious-cli.bat testar state text`
 - `ingenious-cli.bat testar state image`
+- `ingenious-cli.bat testar state title`
 
 ### Actions
 
@@ -86,6 +87,7 @@ Required arguments:
 ### Assertions
 
 - `ingenious-cli.bat testar assert add --bdd-step <bddStep> --text <assertText>`
+- `ingenious-cli.bat testar assert title --bdd-step <bddStep> --title-pattern <titlePattern>`
 
 ## Parameter rules
 
@@ -94,6 +96,7 @@ Required arguments:
 - `<fillText>` is the literal text to type into the selected input.
 - `<optionValue>` must match one of the option values exposed in the latest widget state for a `select` or `dropdown` element.
 - `<assertText>` should be a visible, unique text grounded in the current page state.
+- `<titlePattern>` must be a Java regular expression matching the expected web state-page title.
 
 ## Selector semantics
 
@@ -121,17 +124,18 @@ Use the selector exactly as exposed by the latest widget state when possible.
 
 ## Evidence rules
 
-- Treat `testar state widgets`, `testar state text`, and `testar state image` as execution evidence.
+- Treat `testar state widgets`, `testar state text`, `testar state image`, and `testar state title` as execution evidence.
 - Use `testar action history` to confirm what has already been executed in the active daemon session.
 - `testar action history` is BDD-aware in the CLI path and shows which recorded actions belong to which `bddStep`.
 - Prefer grounding assertions in `state text` output before creating them.
 - `testar state image` now writes a PNG file under `tmp\testar\<sessionId>\...` and returns `imagePath`.
+- `testar state title` observes the current web state-page title.
 
 ## Resilience and retry behavior rules
 
 The target web application may need time to load screens, populate widgets, or reflect the result of an action.
 
-When `testar state widgets`, `testar state text`, or `testar state image` fails, returns incomplete information, or does not yet reflect the expected UI change:
+When `testar state widgets`, `testar state text`, `testar state image`, or `testar state title` fails, returns incomplete information, or does not yet reflect the expected UI change:
 
 - Do not assume the goal failed immediately.
 - Retry the same observation command after a short wait.
@@ -175,6 +179,7 @@ Reusable components and supporting generated data are also persisted through the
    - `testar state widgets`
    - `testar state text`
    - `testar state image`
+   - `testar state title`
 6. Execute one action at a time.
 7. Re-check state after each action.
 8. Add assertions only after the target state is visible.
@@ -203,6 +208,7 @@ Reusable components and supporting generated data are also persisted through the
 - `ingenious-cli.bat testar action click --bdd-step "And the user selects the account 13011 and applies for the loan" --selector "input[value='Apply Now']"`
 - `ingenious-cli.bat testar state text`
 - `ingenious-cli.bat testar assert add --bdd-step "Then a message indicates the loan is denied" --text "Denied"`
+- `ingenious-cli.bat testar assert title --bdd-step "Then the page title corresponds to the initial welcome state-page" --title-pattern "ParaBank.*Welcome"`
 - `ingenious-cli.bat testar session stop`
 
 ## Operational rules

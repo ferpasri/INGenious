@@ -10,9 +10,9 @@ This note compares the current INGenious-TESTAR execution paths:
 | Area | Studio | CLI | Notes |
 | --- | --- | --- | --- |
 | Browser/session engine | Yes | Yes | Both ultimately use the same Playwright-based TESTAR services. |
-| State inspection | Yes | Yes | Both can inspect widgets, visible text, and screenshots. |
+| State inspection | Yes | Yes | Both can inspect widgets, visible text, page titles, and screenshots. |
 | Action execution | Yes | Yes | Both support click, fill, and select actions. |
-| Assertions | Yes | Yes | Both can add assertion text tied to BDD steps. |
+| Assertions | Yes | Yes | Both can add visible-text assertions and page-title assertions tied to BDD steps. |
 | Artifact generation | Yes | Yes | Both persist generated INGenious artifacts through `TESTARDataWriter` and persistence services. |
 | Reusable components generation | Yes | Yes | Both rely on the same persistence path once actions/assertions are saved. |
 | Parabank-style scenario generation | Yes | Yes | Both can generate reproducible test artifacts from the same target flow. |
