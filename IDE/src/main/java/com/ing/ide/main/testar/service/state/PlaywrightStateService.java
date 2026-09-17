@@ -121,6 +121,27 @@ public class PlaywrightStateService implements StateService {
         return Feedback.validContext(String.join("\n", widgetsContext));
     }
 
+    @Override
+    public Feedback getStateTitle(SessionContext context) {
+        if (context.getState() == null) {
+            return Feedback.issue(
+                Feedback.Code.STATE_NOT_INITIALIZED,
+                "No web state-page initialized."
+            );
+        }
+
+        try {
+            String title = context.getState().getPage().title();
+            return Feedback.validContext(title != null ? title : "");
+        } catch (PlaywrightException exception) {
+            addSevereLog("Failed to obtain the current page title: " + exception.getMessage());
+            return Feedback.issue(
+                Feedback.Code.STATE_TITLE_COLLECTION_FAILED,
+                "Trying to obtain the current page title: " + exception.getMessage()
+            );
+        }
+    }
+
     private List<PlaywrightWidget> getAndPersistInteractiveWidgets(SessionContext context) {
         context.setState(new PlaywrightState(context.getSystem()));
 

@@ -9,4 +9,6 @@ public interface StateService {
     Feedback getStateImage(SessionContext context);
 
     Feedback getStateVisualText(SessionContext context);
+
+    Feedback getStateTitle(SessionContext context);
 }

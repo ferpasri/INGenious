@@ -77,6 +77,22 @@ public class TestarCliDaemonServerTest {
         assertThat(response.getLines()).contains("daemonActiveSession=false");
     }
 
+    @Test
+    public void testHandleStateTitleDelegatesToBackend() throws Exception {
+        TestarCliDaemonServer server = new TestarCliDaemonServer();
+        TestarBackendApi backend = mock(TestarBackendApi.class);
+        when(backend.getStateTitle())
+            .thenReturn(TestarResult.success("ok", "ParaBank | Welcome", "ParaBank | Welcome"));
+        setPrivateField(server, "backend", backend);
+
+        TestarCliResponse response = server.handle(TestarCliRequest.of("state.title", List.of()));
+
+        verify(backend, times(1)).getStateTitle();
+        assertThat(response.getExitCode()).isZero();
+        assertThat(response.getLines()).contains("status=ok");
+        assertThat(response.getLines()).contains("message=ParaBank | Welcome");
+    }
+
     private void setPrivateField(Object target, String fieldName, Object value) throws Exception {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);

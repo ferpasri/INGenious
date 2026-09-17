@@ -84,6 +84,9 @@ public interface McpInterface {
     @McpMethod(description = "Get a list of the text of all current visible GUI web elements.")
     Feedback getStateVisualText();
 
+    @McpMethod(description = "Get the current web state-page title.")
+    Feedback getStateTitle();
+
     @McpMethod(description = "Add a unique text that can be used to assert a BDD step.")
     Feedback addStepAssert(
         @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,

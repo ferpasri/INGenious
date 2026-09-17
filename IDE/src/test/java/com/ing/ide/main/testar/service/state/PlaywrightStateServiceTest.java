@@ -132,6 +132,29 @@ public class PlaywrightStateServiceTest {
         }
     }
 
+    @Test
+    public void testStateTitleReturnsCurrentPageTitle() {
+        PlaywrightState state = context.getState();
+        Page page = mock(Page.class);
+        when(state.getPage()).thenReturn(page);
+        when(page.title()).thenReturn("ParaBank | Welcome");
+
+        Feedback feedback = stateService.getStateTitle(context);
+
+        assertThat(feedback.isIssue()).isFalse();
+        assertThat(feedback.toString()).isEqualTo("ParaBank | Welcome");
+    }
+
+    @Test
+    public void testStateTitleRequiresInitializedState() {
+        context.setState(null);
+
+        Feedback feedback = stateService.getStateTitle(context);
+
+        assertThat(feedback.isIssue()).isTrue();
+        assertThat(feedback.toString()).contains("No web state-page initialized.");
+    }
+
     private PlaywrightWidget mockInteractiveWidget(
         String cssSelector,
         String href,

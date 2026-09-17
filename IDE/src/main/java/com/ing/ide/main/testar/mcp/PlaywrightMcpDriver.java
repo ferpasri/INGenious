@@ -87,6 +87,11 @@ public class PlaywrightMcpDriver implements McpInterface {
     }
 
     @Override
+    public Feedback getStateTitle() {
+        return stateService.getStateTitle(context);
+    }
+
+    @Override
     public Feedback addStepAssert(String bddStep, String assertText) {
         return assertionService.addStepAssert(context, bddStep, assertText);
     }

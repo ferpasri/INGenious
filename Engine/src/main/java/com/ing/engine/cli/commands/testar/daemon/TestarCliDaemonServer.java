@@ -98,6 +98,9 @@ public final class TestarCliDaemonServer {
             if ("state.image".equals(command)) {
                 return wrapResult(requireBackend().getStateImage());
             }
+            if ("state.title".equals(command)) {
+                return wrapResult(requireBackend().getStateTitle());
+            }
             if ("action.click".equals(command)) {
                 return wrapResult(
                     requireBackend()

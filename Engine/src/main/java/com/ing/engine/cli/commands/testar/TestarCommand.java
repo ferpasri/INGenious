@@ -172,7 +172,10 @@ public class TestarCommand implements Callable<Integer> {
         mixinStandardHelpOptions = true,
         description = "Query TESTAR automation state",
         subcommands = {
-            StateCommand.Widgets.class, StateCommand.Text.class, StateCommand.Image.class
+            StateCommand.Widgets.class,
+            StateCommand.Text.class,
+            StateCommand.Image.class,
+            StateCommand.Title.class
         }
     )
     public static class StateCommand implements Callable<Integer> {
@@ -213,6 +216,16 @@ public class TestarCommand implements Callable<Integer> {
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
                 return new ClientFacade().send(cli, "state.image");
+            }
+        }
+
+        @Command(name = "title", description = "Get the web state-page title from the current TESTAR session")
+        public static class Title implements Callable<Integer> {
+
+            @Override
+            public Integer call() {
+                INGeniousCLI cli = INGeniousCLI.getInstance();
+                return new ClientFacade().send(cli, "state.title");
             }
         }
     }

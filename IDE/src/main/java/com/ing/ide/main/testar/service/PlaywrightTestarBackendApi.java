@@ -138,6 +138,11 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
     }
 
     @Override
+    public TestarResult getStateTitle() {
+        return toResult(stateService.getStateTitle(context), "ok");
+    }
+
+    @Override
     public TestarResult executeClickAction(String bddStep, String cssSelector) {
         Feedback validation = validateBddStep(bddStep);
         if (validation != null) {

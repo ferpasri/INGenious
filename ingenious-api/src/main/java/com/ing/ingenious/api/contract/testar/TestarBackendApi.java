@@ -18,6 +18,8 @@ public interface TestarBackendApi {
 
     TestarResult getStateVisualText();
 
+    TestarResult getStateTitle();
+
     TestarResult executeClickAction(String bddStep, String cssSelector);
 
     TestarResult executeFillAction(String bddStep, String cssSelector, String fillText);
