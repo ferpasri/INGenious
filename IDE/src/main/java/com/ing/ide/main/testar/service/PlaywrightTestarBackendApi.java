@@ -159,6 +159,22 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
     }
 
     @Override
+    public TestarResult executeCheckAction(String bddStep, String cssSelector) {
+        Feedback validation = validateBddStep(bddStep);
+        if (validation != null) {
+            return toResult(validation, "error");
+        }
+
+        Feedback result = actionService.executeCheckAction(
+            context,
+            normalizedBddStep(bddStep),
+            cssSelector
+        );
+        recordIfSuccess(bddStep, result);
+        return toResult(result, "ok");
+    }
+
+    @Override
     public TestarResult executeFillAction(String bddStep, String cssSelector, String fillText) {
         Feedback validation = validateBddStep(bddStep);
         if (validation != null) {

@@ -274,6 +274,7 @@ public class TestarCommand implements Callable<Integer> {
         description = "Execute TESTAR actions",
         subcommands = {
             ActionCommand.Click.class,
+            ActionCommand.Check.class,
             ActionCommand.Fill.class,
             ActionCommand.Select.class,
             ActionCommand.History.class
@@ -307,6 +308,32 @@ public class TestarCommand implements Callable<Integer> {
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
                 return new ClientFacade().send(cli, "action.click", bddStep, cssSelector);
+            }
+        }
+
+        @Command(
+            name = "check",
+            description = "Check a radio button or checkbox in the current TESTAR session"
+        )
+        public static class Check implements Callable<Integer> {
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the check action"
+            )
+            private String bddStep;
+
+            @Option(
+                names = { "--selector" },
+                required = true,
+                description = "CSS selector of the radio button or checkbox input"
+            )
+            private String cssSelector;
+
+            @Override
+            public Integer call() {
+                INGeniousCLI cli = INGeniousCLI.getInstance();
+                return new ClientFacade().send(cli, "action.check", bddStep, cssSelector);
             }
         }
 

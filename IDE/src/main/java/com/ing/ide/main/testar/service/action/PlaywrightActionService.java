@@ -1,9 +1,11 @@
 package com.ing.ide.main.testar.service.action;
 
 import com.ing.ide.main.testar.mcp.Feedback;
+import com.ing.ide.main.testar.playwright.actions.PlaywrightCheck;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightClick;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightFill;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightSelect;
+import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
 import com.ing.ide.main.testar.service.SessionContext;
 import com.ing.ide.main.testar.service.persistence.PersistenceService;
@@ -56,14 +58,13 @@ public class PlaywrightActionService implements ActionService {
             }
 
             PlaywrightClick clickAction = new PlaywrightClick(widget);
+            clickAction.run(context.getSystem(), context.getState(), 0);
             persistenceService.recordActionStep(
                 bddStep,
                 context.getState(),
                 clickAction,
                 context.getState().getPage()
             );
-
-            clickAction.run(context.getSystem(), context.getState(), 0);
 
             String actionDescription = "Executed Click Action in the widget " + cssSelector;
             context.getExecutedActions().add(actionDescription);
@@ -87,6 +88,90 @@ public class PlaywrightActionService implements ActionService {
             return Feedback.issue(
                 Feedback.Code.CLICK_ACTION_EXECUTION_FAILED,
                 "Executing a click action: " + e.getMessage()
+            );
+        }
+    }
+
+    @Override
+    public Feedback executeCheckAction(
+        SessionContext context,
+        String bddStep,
+        String rawCssSelector
+    ) {
+        if (context.getState() == null) {
+            return Feedback.issue(
+                Feedback.Code.STATE_NOT_INITIALIZED,
+                "No web state-page initialized."
+            );
+        }
+
+        addInfoLog("rawCssSelector: " + rawCssSelector);
+
+        String cssSelector = normalizeCssSelector(rawCssSelector);
+
+        if (cssSelector == null || cssSelector.trim().isEmpty()) {
+            addSevereLog("ISSUE: Invalid CSS selector: " + rawCssSelector);
+            return Feedback.issue(
+                Feedback.Code.CSS_SELECTOR_INVALID,
+                "Invalid CSS selector: " + rawCssSelector
+            );
+        }
+
+        try {
+            addInfoLog("Normalized CSS Selector: " + cssSelector);
+
+            PlaywrightWidget widget = context.getState().getWidgetFromCssSelector(cssSelector);
+
+            if (widget == null) {
+                addSevereLog("ISSUE: No matching element found for CSS selector: " + cssSelector);
+                return Feedback.issue(
+                    Feedback.Code.CSS_SELECTOR_NO_MATCH,
+                    "No matching element found for CSS selector: " + cssSelector
+                );
+            }
+
+            String type = widget.get(PlaywrightTags.WebType, "");
+            if (!"radio".equalsIgnoreCase(type) && !"checkbox".equalsIgnoreCase(type)) {
+                return Feedback.issue(
+                    Feedback.Code.CHECK_ACTION_EXECUTION_FAILED,
+                    "Check action requires a radio or checkbox input: " + cssSelector
+                );
+            }
+
+            PlaywrightCheck checkAction = new PlaywrightCheck(widget);
+            checkAction.run(context.getSystem(), context.getState(), 0);
+            persistenceService.recordActionStep(
+                bddStep,
+                context.getState(),
+                checkAction,
+                context.getState().getPage()
+            );
+
+            String actionDescription = "Executed Check Action in the widget " + cssSelector;
+            context.getExecutedActions().add(actionDescription);
+            context
+                .getExecutedActionEntries()
+                .add(
+                    new SessionContext.ExecutedActionEntry(
+                        bddStep,
+                        "check",
+                        cssSelector,
+                        "",
+                        actionDescription
+                    )
+                );
+
+            return Feedback.validContext(actionDescription);
+        } catch (Exception e) {
+            addSevereLog(
+                "Failed to execute check action for selector: " +
+                cssSelector +
+                " - " +
+                e.getMessage()
+            );
+            return Feedback.issue(
+                Feedback.Code.CHECK_ACTION_EXECUTION_FAILED,
+                "Executing a check action: " + e.getMessage()
             );
         }
     }
@@ -131,14 +216,13 @@ public class PlaywrightActionService implements ActionService {
             }
 
             PlaywrightFill fillAction = new PlaywrightFill(widget, fillText);
+            fillAction.run(context.getSystem(), context.getState(), 0);
             persistenceService.recordActionStep(
                 bddStep,
                 context.getState(),
                 fillAction,
                 context.getState().getPage()
             );
-
-            fillAction.run(context.getSystem(), context.getState(), 0);
 
             String actionDescription =
                 "Executed Fill Action " + fillText + " in the widget " + cssSelector;
@@ -207,14 +291,13 @@ public class PlaywrightActionService implements ActionService {
             }
 
             PlaywrightSelect selectAction = new PlaywrightSelect(widget, optionValue);
+            selectAction.run(context.getSystem(), context.getState(), 0);
             persistenceService.recordActionStep(
                 bddStep,
                 context.getState(),
                 selectAction,
                 context.getState().getPage()
             );
-
-            selectAction.run(context.getSystem(), context.getState(), 0);
 
             String actionDescription =
                 "Select value " + optionValue + " in the widget " + cssSelector;

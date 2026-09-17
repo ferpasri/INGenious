@@ -48,6 +48,16 @@ public final class BddMcpValidator implements McpInterface {
     }
 
     @Override
+    public Feedback executeCheckAction(String bddStep, String cssSelector) {
+        Feedback validation = tracker.validateBddStep(bddStep);
+        if (validation != null) return validation;
+
+        Feedback result = mcpDriver.executeCheckAction(bddStep, cssSelector);
+        recordIfSuccess(bddStep, result);
+        return result;
+    }
+
+    @Override
     public Feedback executeFillAction(String bddStep, String cssSelector, String fillText) {
         Feedback validation = tracker.validateBddStep(bddStep);
         if (validation != null) return validation;

@@ -11,7 +11,7 @@ This note compares the current INGenious-TESTAR execution paths:
 | --- | --- | --- | --- |
 | Browser/session engine | Yes | Yes | Both ultimately use the same Playwright-based TESTAR services. |
 | State inspection | Yes | Yes | Both can inspect widgets, visible text, page titles, and screenshots. |
-| Action execution | Yes | Yes | Both support click, fill, and select actions. |
+| Action execution | Yes | Yes | Both support click, check, fill, and select actions. |
 | Assertions | Yes | Yes | Both can add visible-text assertions and page-title assertions tied to BDD steps. |
 | Artifact generation | Yes | Yes | Both persist generated INGenious artifacts through `TESTARDataWriter` and persistence services. |
 | Reusable components generation | Yes | Yes | Both rely on the same persistence path once actions/assertions are saved. |
@@ -28,6 +28,8 @@ This note compares the current INGenious-TESTAR execution paths:
 | Original-step enforcement | Yes | Yes | Both reject steps that do not match the original BDD instruction list. |
 | Executed-step tracking | Yes | Yes | Studio and CLI both track executed BDD steps, but Studio applies it inside the in-IDE agent loop while CLI exposes it through `session status`. |
 | Action history semantics | Basic internal context | BDD-aware CLI output | CLI `action history` shows which actions belong to which `bddStep`. |
+| Radio/checkbox handling | Studio MCP action path | Explicit `action check` command | CLI agents should use `check` for radio buttons and checkboxes; the command verifies the selected state before persistence. |
+| Failed action persistence | Studio-specific action workflow | Successful actions only | The CLI does not record a generated action step when Playwright reports that the action failed. |
 | Quote normalization | Yes | Yes | Both normalize smart quotes before validation and persistence. |
 | LLM/provider configuration | Yes | No | Studio exposes API URL, env var, model, reasoning, vision, max actions; CLI assumes the agent runtime is already configured externally. |
 | Session lifetime | In-process inside Studio | Background local daemon | CLI keeps the session alive across separate commands. |
@@ -37,7 +39,7 @@ This note compares the current INGenious-TESTAR execution paths:
 | Image handling | Intended for LLM vision attachment | Writes a PNG file under `Dist\release\tmp\testar\<sessionId>\...` and returns `imagePath` | Studio stays web/LLM-oriented; CLI is local-agent oriented. |
 | UI feedback | Notifications, busy dialog, saved settings, reusable tree reload | Terminal output | Studio is better for humans; CLI is better for scripted agent workflows. |
 
-## Behavior that stay Studio-only
+## Behavior that stays Studio-only
 
 These parts are valuable in the GUI but do not need to be duplicated in the CLI path.
 

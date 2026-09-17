@@ -94,6 +94,30 @@ public class TestarCliDaemonServerTest {
     }
 
     @Test
+    public void testHandleCheckActionDelegatesToBackend() throws Exception {
+        TestarCliDaemonServer server = new TestarCliDaemonServer();
+        TestarBackendApi backend = mock(TestarBackendApi.class);
+        when(backend.executeCheckAction("And no debts", "input[name='hasExpenses'][value='false']"))
+            .thenReturn(
+                TestarResult.success("ok", "Checked radio button.", "Checked radio button.")
+            );
+        setPrivateField(server, "backend", backend);
+
+        TestarCliResponse response = server.handle(
+            TestarCliRequest.of(
+                "action.check",
+                List.of("And no debts", "input[name='hasExpenses'][value='false']")
+            )
+        );
+
+        verify(backend)
+            .executeCheckAction("And no debts", "input[name='hasExpenses'][value='false']");
+        assertThat(response.getExitCode()).isZero();
+        assertThat(response.getLines()).contains("status=ok");
+        assertThat(response.getLines()).contains("message=Checked radio button.");
+    }
+
+    @Test
     public void testHandleTitleAssertDelegatesToBackend() throws Exception {
         TestarCliDaemonServer server = new TestarCliDaemonServer();
         TestarBackendApi backend = mock(TestarBackendApi.class);

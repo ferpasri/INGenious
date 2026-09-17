@@ -213,7 +213,8 @@ public class LlmMcpAgent {
         return (
             "You are a BDD-GUI test agent. " +
             "Your goal is to complete the BDD instructions. " +
-            "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeFillAction, and executeSelectAction functions. " +
+            "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeCheckAction, executeFillAction, and executeSelectAction functions. " +
+            "Use executeCheckAction for radio buttons and checkboxes instead of executeClickAction. " +
             "Use getCurrentURL, getStateTitle, and checkExecutedActions functions if you need assistance. " +
             "Use navigateBack function if you need to control the web browser. " +
             "After completing each BDD step (Given, When, Then), use getStateImage, getStateVisualText, or getStateTitle to inspect and validate the step result. " +

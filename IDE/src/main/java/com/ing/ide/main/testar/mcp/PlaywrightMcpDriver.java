@@ -63,6 +63,11 @@ public class PlaywrightMcpDriver implements McpInterface {
     }
 
     @Override
+    public Feedback executeCheckAction(String bddStep, String rawCssSelector) {
+        return actionService.executeCheckAction(context, bddStep, rawCssSelector);
+    }
+
+    @Override
     public Feedback executeFillAction(String bddStep, String rawCssSelector, String fillText) {
         return actionService.executeFillAction(context, bddStep, rawCssSelector, fillText);
     }

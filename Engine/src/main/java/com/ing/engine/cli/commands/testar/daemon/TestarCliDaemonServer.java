@@ -107,6 +107,12 @@ public final class TestarCliDaemonServer {
                         .executeClickAction(request.argumentAt(0), request.argumentAt(1))
                 );
             }
+            if ("action.check".equals(command)) {
+                return wrapResult(
+                    requireBackend()
+                        .executeCheckAction(request.argumentAt(0), request.argumentAt(1))
+                );
+            }
             if ("action.fill".equals(command)) {
                 return wrapResult(
                     requireBackend()

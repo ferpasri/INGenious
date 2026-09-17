@@ -6,6 +6,8 @@ import com.ing.ide.main.testar.service.SessionContext;
 public interface ActionService {
     Feedback executeClickAction(SessionContext context, String bddStep, String rawCssSelector);
 
+    Feedback executeCheckAction(SessionContext context, String bddStep, String rawCssSelector);
+
     Feedback executeFillAction(
         SessionContext context,
         String bddStep,

@@ -80,6 +80,7 @@ Required arguments:
 ### Actions
 
 - `ingenious-cli.bat testar action click --bdd-step <bddStep> --selector <cssSelector>`
+- `ingenious-cli.bat testar action check --bdd-step <bddStep> --selector <cssSelector>`
 - `ingenious-cli.bat testar action fill --bdd-step <bddStep> --selector <cssSelector> --text <fillText>`
 - `ingenious-cli.bat testar action select --bdd-step <bddStep> --selector <cssSelector> --value <optionValue>`
 - `ingenious-cli.bat testar action history`
@@ -100,7 +101,7 @@ Required arguments:
 
 ## Selector semantics
 
-For `testar action click`, `testar action fill`, and `testar action select`, `<cssSelector>` must come from the latest `testar state widgets` output.
+For `testar action click`, `testar action check`, `testar action fill`, and `testar action select`, `<cssSelector>` must come from the latest `testar state widgets` output.
 
 Use the selector exactly as exposed by the latest widget state when possible.
 
@@ -109,9 +110,13 @@ Use the selector exactly as exposed by the latest widget state when possible.
 - Use `testar state widgets` before acting.
 - Only execute actions against selectors visible in the latest state output.
 - Use `testar action click` for links, buttons, and other clickable widgets.
+- Use `testar action check` for radio buttons and checkboxes instead of clicking their native `input` element.
+- For a radio or checkbox, prefer a stable selector using its `type`, `name`, and `value` when those attributes are present in the latest state.
 - Keep `<bddStep>` stable across all commands that belong to the same generated scenario step.
 - Keep selectors grounded in the latest observed state rather than guessing them.
 - Re-check state after each action before deciding the next one.
+
+The check operation first attempts a normal Playwright check, then retries with a forced check if the control is obstructed by its custom visual component. It verifies the selected state before returning success. If it still fails, inspect the latest state again rather than recording a guessed action.
 
 ## BDD order behavior
 
@@ -127,6 +132,7 @@ Use the selector exactly as exposed by the latest widget state when possible.
 - Treat `testar state widgets`, `testar state text`, `testar state image`, and `testar state title` as execution evidence.
 - Use `testar action history` to confirm what has already been executed in the active daemon session.
 - `testar action history` is BDD-aware in the CLI path and shows which recorded actions belong to which `bddStep`.
+- Failed actions are not persisted as generated script steps. An action is added to the generated artifacts and action history only after Playwright reports success.
 - Prefer grounding assertions in `state text` output before creating them.
 - `testar state image` now writes a PNG file under `tmp\testar\<sessionId>\...` and returns `imagePath`.
 - `testar state title` observes the current web state-page title.
@@ -198,6 +204,7 @@ Reusable components and supporting generated data are also persisted through the
   - `Then a message indicates the loan is denied`
 - `ingenious-cli.bat testar session start -p "Projects\\Parabank" --url "https://para.testar.org/" --bdd-goal "parabank/requested_loans_with_small_down_payments_must_be_denied"`
 - `ingenious-cli.bat testar state widgets`
+- `ingenious-cli.bat testar action check --bdd-step "And the user does not have any debts" --selector "input[type='radio'][name='hasExpenses'][value='false']"`
 - `ingenious-cli.bat testar action fill --bdd-step "When the user logs in with the john/demo credentials" --selector "[type='text']" --text "john"`
 - `ingenious-cli.bat testar action fill --bdd-step "When the user logs in with the john/demo credentials" --selector "[type='password']" --text "demo"`
 - `ingenious-cli.bat testar action click --bdd-step "When the user logs in with the john/demo credentials" --selector "[type='submit']"`

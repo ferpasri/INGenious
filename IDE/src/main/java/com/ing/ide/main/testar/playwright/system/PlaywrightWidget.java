@@ -110,6 +110,7 @@ public class PlaywrightWidget implements Widget, Serializable {
             "    role: el.getAttribute('role') || ''," +
             "    href: el.getAttribute('href') || ''," +
             "    type: el.getAttribute('type') || ''," +
+            "    checked: !!el.checked," +
             "    title: el.getAttribute('title') || ''," +
             "    innerText: el.innerText || ''," +
             "    isClickable: el.matches(clickable)," +
@@ -135,6 +136,7 @@ public class PlaywrightWidget implements Widget, Serializable {
         this.set(PlaywrightTags.WebRole, (String) attributes.get("role"));
         this.set(PlaywrightTags.WebHref, (String) attributes.get("href"));
         this.set(PlaywrightTags.WebType, (String) attributes.get("type"));
+        this.set(PlaywrightTags.WebIsChecked, (Boolean) attributes.get("checked"));
         this.set(PlaywrightTags.WebTitle, (String) attributes.get("title"));
         this.set(PlaywrightTags.WebInnerText, (String) attributes.get("innerText"));
         this.set(PlaywrightTags.WebIsVisible, (Boolean) attributes.get("isVisible"));

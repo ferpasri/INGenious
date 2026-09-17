@@ -22,6 +22,8 @@ public interface TestarBackendApi {
 
     TestarResult executeClickAction(String bddStep, String cssSelector);
 
+    TestarResult executeCheckAction(String bddStep, String cssSelector);
+
     TestarResult executeFillAction(String bddStep, String cssSelector, String fillText);
 
     TestarResult executeSelectAction(String bddStep, String cssSelector, String optionValue);

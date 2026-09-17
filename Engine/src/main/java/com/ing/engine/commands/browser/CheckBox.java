@@ -6,6 +6,7 @@ import com.ing.ingenious.api.exception.ActionException;
 import com.ing.ingenious.api.status.Status;
 import com.ing.ingenious.api.types.InputType;
 import com.ing.ingenious.api.types.ObjectType;
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.PlaywrightException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,7 +22,11 @@ public class CheckBox extends Command {
         if (Locator != null) {
             if (Locator.isEnabled()) {
                 if (!Locator.isChecked()) {
-                    Locator.check();
+                    try {
+                        Locator.check();
+                    } catch (PlaywrightException normalCheckFailure) {
+                        Locator.check(new Locator.CheckOptions().setForce(true));
+                    }
                 }
                 if (Locator.isChecked()) {
                     Report.updateTestLog(

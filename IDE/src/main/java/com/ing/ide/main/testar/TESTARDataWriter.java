@@ -12,6 +12,7 @@ import com.ing.datalib.or.web.WebORObject;
 import com.ing.datalib.or.web.WebORPage;
 import com.ing.datalib.testdata.model.TestDataModel;
 import com.ing.ide.main.mainui.components.testdesign.tree.model.ReusableTreeModel;
+import com.ing.ide.main.testar.playwright.actions.PlaywrightCheck;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightClick;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightFill;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightSelect;
@@ -444,7 +445,10 @@ public class TESTARDataWriter {
         String input = "";
         String reference = webORPage.getName();
 
-        if (action instanceof PlaywrightClick) {
+        if (action instanceof PlaywrightCheck) {
+            description = "Check the [<Object>] element";
+            testAction = "Check";
+        } else if (action instanceof PlaywrightClick) {
             description = "Click the [<Object>]";
             testAction = "Click";
         } else if (action instanceof PlaywrightFill) {

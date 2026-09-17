@@ -47,6 +47,17 @@ public interface McpInterface {
         ) String cssSelector
     );
 
+    @McpMethod(
+        description = "Use a CSS selector to check a radio button or checkbox. Use this instead of click for radio and checkbox inputs."
+    )
+    Feedback executeCheckAction(
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "cssSelector",
+            description = "The CSS selector of the radio button or checkbox input."
+        ) String cssSelector
+    );
+
     @McpMethod(description = "Use a CSS selector to fill text into an input element.")
     Feedback executeFillAction(
         @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,

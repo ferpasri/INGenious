@@ -180,6 +180,18 @@ public class PlaywrightStateService implements StateService {
         widgetInfo.put("isModal", String.valueOf(widget.get(PlaywrightTags.WebIsModal, false)));
         widgetInfo.put("css", widget.get(PlaywrightTags.WebLocatorCSS));
         widgetInfo.put("role", widget.get(PlaywrightTags.WebTagName));
+        widgetInfo.put("type", widget.get(PlaywrightTags.WebType, ""));
+        widgetInfo.put("name", widget.get(PlaywrightTags.WebName, ""));
+        widgetInfo.put("value", widget.get(PlaywrightTags.WebValue, ""));
+        if (
+            "radio".equalsIgnoreCase(widget.get(PlaywrightTags.WebType, "")) ||
+            "checkbox".equalsIgnoreCase(widget.get(PlaywrightTags.WebType, ""))
+        ) {
+            widgetInfo.put(
+                "checked",
+                String.valueOf(widget.get(PlaywrightTags.WebIsChecked, false))
+            );
+        }
         widgetInfo.put("placeholder", widget.get(PlaywrightTags.WebLocatorPlaceholder));
         widgetInfo.put("label", widget.get(PlaywrightTags.WebLocatorLabel));
         widgetInfo.put("alttext", widget.get(PlaywrightTags.WebLocatorAltText));
