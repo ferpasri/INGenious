@@ -97,6 +97,11 @@ public class PlaywrightMcpDriver implements McpInterface {
     }
 
     @Override
+    public Feedback addTitleAssert(String bddStep, String titlePattern) {
+        return assertionService.addTitleAssert(context, bddStep, titlePattern);
+    }
+
+    @Override
     public void stopTestExecution() {
         // At the end of the generated sequence, save the generated INGenious testCase
         persistenceService.saveExecutionSteps();

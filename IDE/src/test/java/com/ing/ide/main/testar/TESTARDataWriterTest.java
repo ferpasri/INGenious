@@ -403,6 +403,21 @@ public class TESTARDataWriterTest {
     }
 
     @Test
+    public void testTitleAssertCreatesBrowserActionDataWithoutObjectRepositoryElement()
+        throws IOException {
+        InMemoryTestDataModel testDataModel = new InMemoryTestDataModel();
+        TESTARDataWriter writer = createWriter(testDataModel);
+
+        writer.addTitleAssertTestStep("Then the welcome page is shown", "ParaBank.*Welcome");
+
+        assertThat(testDataModel.getRecords()).hasSize(1);
+        Record record = testDataModel.getRecords().get(0);
+        assertThat(record.get(testDataModel.getColumnIndex("Browser_assertPageTitleMatches")))
+            .isEqualTo("ParaBank.*Welcome");
+        assertThat(tempDir.resolve("ObjectRepository").resolve("Web")).doesNotExist();
+    }
+
+    @Test
     public void testAssertTextsWithSamePrefixCreateDifferentObjects() throws IOException {
         TESTARDataWriter writer = createWriter();
         PlaywrightState state = mockState(mockPage("Loan Request"));

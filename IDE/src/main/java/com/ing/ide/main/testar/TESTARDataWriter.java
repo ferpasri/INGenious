@@ -488,6 +488,17 @@ public class TESTARDataWriter {
         addAbstractTestStep(bddStep, object, description, testAction, input, reference);
     }
 
+    public void addTitleAssertTestStep(String bddStep, String titlePattern) {
+        addAbstractTestStep(
+            bddStep,
+            "Browser",
+            "Assert if Page has title [<Data>]",
+            "assertPageTitleMatches",
+            "@" + titlePattern,
+            ""
+        );
+    }
+
     private WebORObject findAssertObjectByText(WebORPage webORPage, String assertText) {
         for (ObjectGroup<WebORObject> objectGroup : webORPage.getObjectGroups()) {
             for (WebORObject object : objectGroup.getObjects()) {

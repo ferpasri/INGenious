@@ -217,6 +217,8 @@ public class LlmMcpAgent {
             "Use getCurrentURL, getStateTitle, and checkExecutedActions functions if you need assistance. " +
             "Use navigateBack function if you need to control the web browser. " +
             "After completing each BDD step (Given, When, Then), use getStateImage, getStateVisualText, or getStateTitle to inspect and validate the step result. " +
+            "Use addStepAssert only with visible, unique page text. " +
+            "Use addTitleAssert with a Java regular expression only when the page title is the intended assertion. " +
             "When asserting all BDD instructions, use the stopTestExecution function. " +
             "Choose exactly one tool invocation at a time. " +
             "If your provider requires text-only tool selection, return a single JSON object with this shape: " +

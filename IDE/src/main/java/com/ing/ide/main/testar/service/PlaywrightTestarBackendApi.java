@@ -225,6 +225,22 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         return toResult(result, "ok");
     }
 
+    @Override
+    public TestarResult addTitleAssert(String bddStep, String titlePattern) {
+        Feedback validation = validateBddStep(bddStep);
+        if (validation != null) {
+            return toResult(validation, "error");
+        }
+
+        Feedback result = assertionService.addTitleAssert(
+            context,
+            normalizedBddStep(bddStep),
+            titlePattern
+        );
+        recordIfSuccess(bddStep, result);
+        return toResult(result, "ok");
+    }
+
     private BddStepTracker createBddStepTracker(String bddInstructions) {
         String normalizedInstructions = normalizeBddInstructions(bddInstructions);
         if (normalizedInstructions.isEmpty()) {

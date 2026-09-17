@@ -135,6 +135,11 @@ public final class TestarCliDaemonServer {
                     requireBackend().addAssert(request.argumentAt(0), request.argumentAt(1))
                 );
             }
+            if ("assert.title".equals(command)) {
+                return wrapResult(
+                    requireBackend().addTitleAssert(request.argumentAt(0), request.argumentAt(1))
+                );
+            }
             if ("daemon.ping".equals(command)) {
                 return withDaemonMetadata(
                     new TestarCliResponse(0, List.of("status=ready")),

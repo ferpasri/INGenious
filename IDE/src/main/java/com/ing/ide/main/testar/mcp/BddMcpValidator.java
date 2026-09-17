@@ -98,6 +98,16 @@ public final class BddMcpValidator implements McpInterface {
     }
 
     @Override
+    public Feedback addTitleAssert(String bddStep, String titlePattern) {
+        Feedback validation = tracker.validateBddStep(bddStep);
+        if (validation != null) return validation;
+
+        Feedback result = mcpDriver.addTitleAssert(bddStep, titlePattern);
+        recordIfSuccess(bddStep, result);
+        return result;
+    }
+
+    @Override
     public void stopTestExecution() {
         mcpDriver.stopTestExecution();
     }

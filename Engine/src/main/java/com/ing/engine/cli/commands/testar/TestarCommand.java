@@ -219,7 +219,10 @@ public class TestarCommand implements Callable<Integer> {
             }
         }
 
-        @Command(name = "title", description = "Get the web state-page title from the current TESTAR session")
+        @Command(
+            name = "title",
+            description = "Get the web state-page title from the current TESTAR session"
+        )
         public static class Title implements Callable<Integer> {
 
             @Override
@@ -385,7 +388,7 @@ public class TestarCommand implements Callable<Integer> {
         name = "assert",
         mixinStandardHelpOptions = true,
         description = "Add TESTAR assertions",
-        subcommands = { AssertCommand.Add.class }
+        subcommands = { AssertCommand.Add.class, AssertCommand.Title.class }
     )
     public static class AssertCommand implements Callable<Integer> {
 
@@ -415,6 +418,29 @@ public class TestarCommand implements Callable<Integer> {
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
                 return new ClientFacade().send(cli, "assert.add", bddStep, assertText);
+            }
+        }
+
+        @Command(name = "title", description = "Add a state-page title assertion for a BDD step")
+        public static class Title implements Callable<Integer> {
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the assertion"
+            )
+            private String bddStep;
+
+            @Option(
+                names = { "--title-pattern" },
+                required = true,
+                description = "Java regular expression matching the expected state-page title"
+            )
+            private String titlePattern;
+
+            @Override
+            public Integer call() {
+                INGeniousCLI cli = INGeniousCLI.getInstance();
+                return new ClientFacade().send(cli, "assert.title", bddStep, titlePattern);
             }
         }
     }

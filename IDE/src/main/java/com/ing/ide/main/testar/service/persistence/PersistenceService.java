@@ -16,5 +16,7 @@ public interface PersistenceService {
 
     void recordAssertStep(String bddStep, PlaywrightState state, String assertText);
 
+    void recordTitleAssertStep(String bddStep, String titlePattern);
+
     void saveExecutionSteps();
 }

@@ -96,6 +96,15 @@ public interface McpInterface {
         ) String assertText
     );
 
+    @McpMethod(description = "Add a state-page title pattern assertion for a BDD step.")
+    Feedback addTitleAssert(
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "titlePattern",
+            description = "A Java regular expression matching the current and expected state-page title."
+        ) String titlePattern
+    );
+
     @McpMethod(
         description = "Stop the test execution when the final assert is completed successfully."
     )

@@ -29,4 +29,6 @@ public interface TestarBackendApi {
     TestarResult getExecutedActions();
 
     TestarResult addAssert(String bddStep, String assertText);
+
+    TestarResult addTitleAssert(String bddStep, String titlePattern);
 }

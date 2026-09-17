@@ -44,6 +44,9 @@ public final class LlmInvalidActionClassifier {
             value = extractArgument(argumentsJson, "assertText");
         }
         if (value.isEmpty()) {
+            value = extractArgument(argumentsJson, "titlePattern");
+        }
+        if (value.isEmpty()) {
             value = extractArgument(argumentsJson, "url");
         }
 
@@ -281,6 +284,22 @@ public final class LlmInvalidActionClassifier {
                     "assert_text_not_visible",
                     "Assert text matched an element that is not visible."
                 );
+            case ASSERT_TITLE_PATTERN_INVALID:
+                return new InvalidActionClassification(
+                    bddStep,
+                    selector,
+                    value,
+                    "assert_title_pattern_invalid",
+                    "Page title assertion used an invalid regular expression."
+                );
+            case ASSERT_TITLE_MISMATCH:
+                return new InvalidActionClassification(
+                    bddStep,
+                    selector,
+                    value,
+                    "assert_title_mismatch",
+                    "Current page title did not match the expected title pattern."
+                );
             case LOAD_URL_FAILED:
                 return new InvalidActionClassification(
                     bddStep,
@@ -320,6 +339,14 @@ public final class LlmInvalidActionClassifier {
                     value,
                     "state_visual_text_collection_failed",
                     "Visible text state collection failed."
+                );
+            case STATE_TITLE_COLLECTION_FAILED:
+                return new InvalidActionClassification(
+                    bddStep,
+                    selector,
+                    value,
+                    "state_title_collection_failed",
+                    "Page title state collection failed."
                 );
             case CLICK_ACTION_EXECUTION_FAILED:
                 return new InvalidActionClassification(

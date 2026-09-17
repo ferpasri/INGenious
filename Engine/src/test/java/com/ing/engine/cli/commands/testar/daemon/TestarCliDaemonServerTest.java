@@ -93,6 +93,35 @@ public class TestarCliDaemonServerTest {
         assertThat(response.getLines()).contains("message=ParaBank | Welcome");
     }
 
+    @Test
+    public void testHandleTitleAssertDelegatesToBackend() throws Exception {
+        TestarCliDaemonServer server = new TestarCliDaemonServer();
+        TestarBackendApi backend = mock(TestarBackendApi.class);
+        when(backend.addTitleAssert("Then the welcome page is shown", "ParaBank.*Welcome"))
+            .thenReturn(
+                TestarResult.success(
+                    "ok",
+                    "Page title assertion created successfully!",
+                    "Page title assertion created successfully!"
+                )
+            );
+        setPrivateField(server, "backend", backend);
+
+        TestarCliResponse response = server.handle(
+            TestarCliRequest.of(
+                "assert.title",
+                List.of("Then the welcome page is shown", "ParaBank.*Welcome")
+            )
+        );
+
+        verify(backend, times(1))
+            .addTitleAssert("Then the welcome page is shown", "ParaBank.*Welcome");
+        assertThat(response.getExitCode()).isZero();
+        assertThat(response.getLines()).contains("status=ok");
+        assertThat(response.getLines())
+            .contains("message=Page title assertion created successfully!");
+    }
+
     private void setPrivateField(Object target, String fieldName, Object value) throws Exception {
         Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
