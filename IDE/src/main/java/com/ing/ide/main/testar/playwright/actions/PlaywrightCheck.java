@@ -3,6 +3,8 @@ package com.ing.ide.main.testar.playwright.actions;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
 import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.PlaywrightException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.testar.monkey.alayer.Action;
 import org.testar.monkey.alayer.Role;
 import org.testar.monkey.alayer.SUT;
@@ -12,6 +14,9 @@ import org.testar.monkey.alayer.Tags;
 import org.testar.monkey.alayer.exceptions.ActionFailedException;
 
 public class PlaywrightCheck extends TaggableBase implements Action {
+    private static final double CHECK_ACTION_TIMEOUT_MS = 2000d;
+    private static final Logger LOGGER = Logger.getLogger(PlaywrightCheck.class.getName());
+
     private final ElementHandle elementHandle;
 
     public PlaywrightCheck(PlaywrightWidget widget) {
@@ -32,9 +37,28 @@ public class PlaywrightCheck extends TaggableBase implements Action {
         }
 
         try {
-            elementHandle.check();
+            elementHandle.check(
+                new ElementHandle.CheckOptions().setTimeout(CHECK_ACTION_TIMEOUT_MS)
+            );
         } catch (PlaywrightException normalCheckFailure) {
-            elementHandle.check(new ElementHandle.CheckOptions().setForce(true));
+            String fallbackMessage =
+                "Normal check was not actionable; retrying with force. Reason: " +
+                normalCheckFailure.getMessage();
+            LOGGER.log(Level.INFO, fallbackMessage);
+
+            try {
+                elementHandle.check(
+                    new ElementHandle.CheckOptions()
+                        .setForce(true)
+                        .setTimeout(CHECK_ACTION_TIMEOUT_MS)
+                );
+            } catch (PlaywrightException forcedCheckFailure) {
+                String failureMessage =
+                    "Forced check failed after normal check was not actionable: " +
+                    forcedCheckFailure.getMessage();
+                LOGGER.log(Level.WARNING, failureMessage);
+                throw new ActionFailedException(failureMessage);
+            }
         }
 
         if (!elementHandle.isChecked()) {

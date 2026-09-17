@@ -12,6 +12,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CheckBox extends Command {
+    private static final double CHECK_ACTION_TIMEOUT_MS = 2000d;
+    private static final Logger LOGGER = Logger.getLogger(CheckBox.class.getName());
 
     public CheckBox(CommandControl cc) {
         super(cc);
@@ -23,9 +25,33 @@ public class CheckBox extends Command {
             if (Locator.isEnabled()) {
                 if (!Locator.isChecked()) {
                     try {
-                        Locator.check();
+                        Locator.check(
+                            new Locator.CheckOptions().setTimeout(CHECK_ACTION_TIMEOUT_MS)
+                        );
                     } catch (PlaywrightException normalCheckFailure) {
-                        Locator.check(new Locator.CheckOptions().setForce(true));
+                        String fallbackMessage =
+                            "Normal check was not actionable for '" +
+                            ObjectName +
+                            "'; retrying with force. Reason: " +
+                            normalCheckFailure.getMessage();
+                        LOGGER.log(Level.INFO, fallbackMessage);
+
+                        try {
+                            Locator.check(
+                                new Locator.CheckOptions()
+                                    .setForce(true)
+                                    .setTimeout(CHECK_ACTION_TIMEOUT_MS)
+                            );
+                        } catch (PlaywrightException forcedCheckFailure) {
+                            String failureMessage =
+                                "Forced check failed for '" +
+                                ObjectName +
+                                "'. Error: " +
+                                forcedCheckFailure.getMessage();
+                            LOGGER.log(Level.WARNING, failureMessage);
+                            Report.updateTestLog("check", failureMessage, Status.FAIL);
+                            return;
+                        }
                     }
                 }
                 if (Locator.isChecked()) {
