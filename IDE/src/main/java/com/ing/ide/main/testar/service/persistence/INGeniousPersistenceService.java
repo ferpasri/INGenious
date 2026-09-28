@@ -52,6 +52,11 @@ public class INGeniousPersistenceService implements PersistenceService {
     }
 
     @Override
+    public void recordTitleAssertStep(String bddStep, String titlePattern) {
+        dataWriter.addTitleAssertTestStep(bddStep, titlePattern);
+    }
+
+    @Override
     public void saveExecutionSteps() {
         dataWriter.saveExecutionSteps();
     }

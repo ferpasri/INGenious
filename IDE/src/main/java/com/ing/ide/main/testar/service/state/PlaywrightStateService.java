@@ -121,6 +121,27 @@ public class PlaywrightStateService implements StateService {
         return Feedback.validContext(String.join("\n", widgetsContext));
     }
 
+    @Override
+    public Feedback getStateTitle(SessionContext context) {
+        if (context.getState() == null) {
+            return Feedback.issue(
+                Feedback.Code.STATE_NOT_INITIALIZED,
+                "No web state-page initialized."
+            );
+        }
+
+        try {
+            String title = context.getState().getPage().title();
+            return Feedback.validContext(title != null ? title : "");
+        } catch (PlaywrightException exception) {
+            addSevereLog("Failed to obtain the current page title: " + exception.getMessage());
+            return Feedback.issue(
+                Feedback.Code.STATE_TITLE_COLLECTION_FAILED,
+                "Trying to obtain the current page title: " + exception.getMessage()
+            );
+        }
+    }
+
     private List<PlaywrightWidget> getAndPersistInteractiveWidgets(SessionContext context) {
         context.setState(new PlaywrightState(context.getSystem()));
 
@@ -159,6 +180,18 @@ public class PlaywrightStateService implements StateService {
         widgetInfo.put("isModal", String.valueOf(widget.get(PlaywrightTags.WebIsModal, false)));
         widgetInfo.put("css", widget.get(PlaywrightTags.WebLocatorCSS));
         widgetInfo.put("role", widget.get(PlaywrightTags.WebTagName));
+        widgetInfo.put("type", widget.get(PlaywrightTags.WebType, ""));
+        widgetInfo.put("name", widget.get(PlaywrightTags.WebName, ""));
+        widgetInfo.put("value", widget.get(PlaywrightTags.WebValue, ""));
+        if (
+            "radio".equalsIgnoreCase(widget.get(PlaywrightTags.WebType, "")) ||
+            "checkbox".equalsIgnoreCase(widget.get(PlaywrightTags.WebType, ""))
+        ) {
+            widgetInfo.put(
+                "checked",
+                String.valueOf(widget.get(PlaywrightTags.WebIsChecked, false))
+            );
+        }
         widgetInfo.put("placeholder", widget.get(PlaywrightTags.WebLocatorPlaceholder));
         widgetInfo.put("label", widget.get(PlaywrightTags.WebLocatorLabel));
         widgetInfo.put("alttext", widget.get(PlaywrightTags.WebLocatorAltText));

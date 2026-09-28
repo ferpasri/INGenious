@@ -63,6 +63,11 @@ public class PlaywrightMcpDriver implements McpInterface {
     }
 
     @Override
+    public Feedback executeCheckAction(String bddStep, String rawCssSelector) {
+        return actionService.executeCheckAction(context, bddStep, rawCssSelector);
+    }
+
+    @Override
     public Feedback executeFillAction(String bddStep, String rawCssSelector, String fillText) {
         return actionService.executeFillAction(context, bddStep, rawCssSelector, fillText);
     }
@@ -87,8 +92,18 @@ public class PlaywrightMcpDriver implements McpInterface {
     }
 
     @Override
+    public Feedback getStateTitle() {
+        return stateService.getStateTitle(context);
+    }
+
+    @Override
     public Feedback addStepAssert(String bddStep, String assertText) {
         return assertionService.addStepAssert(context, bddStep, assertText);
+    }
+
+    @Override
+    public Feedback addTitleAssert(String bddStep, String titlePattern) {
+        return assertionService.addTitleAssert(context, bddStep, titlePattern);
     }
 
     @Override

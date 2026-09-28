@@ -94,9 +94,36 @@
       }
     },
 
+    escapeAttributeValue: function (value) {
+      return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    },
+
+    getStableFormControlCSS: function (el) {
+      const tagName = (el.tagName || '').toLowerCase();
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      if (tagName !== 'input' || !['radio', 'checkbox'].includes(type)) return '';
+
+      const attributes = [`[type="${type}"]`];
+      const name = el.getAttribute('name');
+      const value = el.getAttribute('value');
+      if (name) attributes.push(`[name="${this.escapeAttributeValue(name)}"]`);
+      if (value) attributes.push(`[value="${this.escapeAttributeValue(value)}"]`);
+
+      const candidate = `input${attributes.join('')}`;
+      try {
+        if (document.querySelectorAll(candidate).length === 1) return candidate;
+      } catch (e) {
+        return '';
+      }
+      return '';
+    },
+
     getCSS: function (el) {
       let generatedCss = '';
       try {
+        const stableFormControlCss = this.getStableFormControlCSS(el);
+        if (stableFormControlCss) return stableFormControlCss;
+
         generatedCss = CssSelectorGenerator.getCssSelector(el);
       } catch (e) {
         generatedCss = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');

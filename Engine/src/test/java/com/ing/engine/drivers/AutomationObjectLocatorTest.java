@@ -1,8 +1,13 @@
 package com.ing.engine.drivers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.ing.datalib.or.common.ORAttribute;
+import com.microsoft.playwright.Locator;
+import com.microsoft.playwright.Page;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -287,11 +292,31 @@ public class AutomationObjectLocatorTest {
 
     @Test
     public void testPageGetterSetter() {
-        com.microsoft.playwright.Page mockPage = org.mockito.Mockito.mock(
-            com.microsoft.playwright.Page.class
-        );
+        Page mockPage = mock(Page.class);
         ao.setPage(mockPage);
         assertThat(ao.getPage()).isSameAs(mockPage);
+    }
+
+    @Test
+    public void testLocatorFallbackUsesLaterUniqueLocator() throws Exception {
+        Page page = mock(Page.class);
+        Locator roleLocator = mock(Locator.class);
+        Locator cssLocator = mock(Locator.class);
+        when(page.getByRole(any(), any(Page.GetByRoleOptions.class))).thenReturn(roleLocator);
+        when(page.locator("css=#fromAccountId")).thenReturn(cssLocator);
+        when(roleLocator.count()).thenReturn(0);
+        when(cssLocator.count()).thenReturn(1);
+        ao.setPage(page);
+
+        List<ORAttribute> attributes = new ArrayList<>();
+        attributes.add(createORAttribute("Role", "combobox;12345 13011 54321"));
+        attributes.add(createORAttribute("css", "#fromAccountId"));
+
+        List<Locator> candidates = invokeGetElements(attributes);
+        Locator selectedLocator = invokeGetElementFromList(candidates);
+
+        assertThat(candidates).containsExactly(roleLocator, cssLocator);
+        assertThat(selectedLocator).isSameAs(cssLocator);
     }
 
     // ── Utility ─────────────────────────────────────────────────────────
@@ -301,5 +326,20 @@ public class AutomationObjectLocatorTest {
             AutomationObject.class.getDeclaredMethod("getRuntimeValue", String.class);
         m.setAccessible(true);
         return (String) m.invoke(ao, value);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Locator> invokeGetElements(List<ORAttribute> attributes) throws Exception {
+        java.lang.reflect.Method method =
+            AutomationObject.class.getDeclaredMethod("getElements", List.class);
+        method.setAccessible(true);
+        return (List<Locator>) method.invoke(ao, attributes);
+    }
+
+    private Locator invokeGetElementFromList(List<Locator> locators) throws Exception {
+        java.lang.reflect.Method method =
+            AutomationObject.class.getDeclaredMethod("getElementFromList", List.class);
+        method.setAccessible(true);
+        return (Locator) method.invoke(ao, locators);
     }
 }

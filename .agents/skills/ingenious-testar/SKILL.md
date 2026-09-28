@@ -89,10 +89,15 @@ Required arguments:
 - `ingenious-cli.bat testar state widgets`
 - `ingenious-cli.bat testar state text`
 - `ingenious-cli.bat testar state image`
+- `ingenious-cli.bat testar state title`
+
+`state title` returns the current Playwright page title as observation evidence. It does not create
+or persist a generated test step.
 
 ### Actions
 
 - `ingenious-cli.bat testar action click "--bdd-step=<bddStep>" "--selector=<cssSelector>"`
+- `ingenious-cli.bat testar action check "--bdd-step=<bddStep>" "--selector=<cssSelector>"`
 - `ingenious-cli.bat testar action fill "--bdd-step=<bddStep>" "--selector=<cssSelector>" "--text=<fillText>"`
 - `ingenious-cli.bat testar action select "--bdd-step=<bddStep>" "--selector=<cssSelector>" "--value=<optionValue>"`
 - `ingenious-cli.bat testar action history`
@@ -100,6 +105,7 @@ Required arguments:
 ### Assertions
 
 - `ingenious-cli.bat testar assert add "--bdd-step=<bddStep>" "--text=<assertText>"`
+- `ingenious-cli.bat testar assert title "--bdd-step=<bddStep>" "--title-pattern=<titlePattern>"`
 
 ## Parameter rules
 
@@ -108,10 +114,12 @@ Required arguments:
 - `<fillText>` is the literal text to type into the selected input.
 - `<optionValue>` must match one of the option values exposed in the latest widget state for a `select` or `dropdown` element.
 - `<assertText>` should be a visible, unique text grounded in the current page state.
+- `<titlePattern>` must be a valid Java regular expression that matches the current title observed
+  with `testar state title` and describes the expected title during replay.
 
 ## Selector semantics
 
-For `testar action click`, `testar action fill`, and `testar action select`, `<cssSelector>` must come from the latest `testar state widgets` output.
+For `testar action click`, `testar action check`, `testar action fill`, and `testar action select`, `<cssSelector>` must come from the latest `testar state widgets` output.
 
 Use the selector exactly as exposed by the latest widget state when possible.
 
@@ -120,9 +128,29 @@ Use the selector exactly as exposed by the latest widget state when possible.
 - Use `testar state widgets` before acting.
 - Only execute actions against selectors visible in the latest state output.
 - Use `testar action click` for links, buttons, and other clickable widgets.
+- Use `testar action check` for radio buttons and checkboxes instead of clicking their native `input` element.
+- For a radio or checkbox, prefer a stable selector using its `type`, `name`, and `value` when those attributes are present in the latest state.
 - Keep `<bddStep>` stable across all commands that belong to the same generated scenario step.
 - Keep selectors grounded in the latest observed state rather than guessing them.
 - Re-check state after each action before deciding the next one.
+
+The check operation requires a native `input` whose type is `radio` or `checkbox`. It first
+attempts a normal Playwright check, then retries with a forced check if the control is obstructed
+by its custom visual component. It verifies the checked state before returning success. Only a
+successful check is persisted as an INGenious `Check` step. If it still fails, inspect the latest
+state again rather than recording a guessed action.
+
+## Page-title assertion rules
+
+- Observe the title first with `testar state title`.
+- Use `testar assert title` only when the page title is meaningful evidence for the current BDD
+  step. Otherwise use a visible-text assertion.
+- The command validates both the Java regular-expression syntax and its match against the current
+  page title before persisting anything.
+- A successful command generates an INGenious `assertPageTitleMatches` Browser assertion. It does
+  not create an Object Repository element.
+- If the current title does not match, inspect the current URL, title, text, and widgets instead of
+  weakening the pattern merely to make the assertion pass.
 
 ## BDD order behavior
 
@@ -135,17 +163,21 @@ Use the selector exactly as exposed by the latest widget state when possible.
 
 ## Evidence rules
 
-- Treat `testar state widgets`, `testar state text`, and `testar state image` as execution evidence.
+- Treat `testar state widgets`, `testar state text`, `testar state image`, and `testar state title` as execution evidence.
 - Use `testar action history` to confirm what has already been executed in the active daemon session.
 - `testar action history` is BDD-aware in the CLI path and shows which recorded actions belong to which `bddStep`.
+- Failed actions are not persisted as generated script steps. An action is added to the generated artifacts and action history only after Playwright reports success.
 - Prefer grounding assertions in `state text` output before creating them.
 - `testar state image` now writes a PNG file under `tmp\testar\<sessionId>\...` and returns `imagePath`.
+- `testar state title` returns the current web state-page title without persisting a step.
+- A successful `testar assert title` persists the supplied pattern as an
+  `assertPageTitleMatches` Browser assertion.
 
 ## Resilience and retry behavior rules
 
 The target web application may need time to load screens, populate widgets, or reflect the result of an action.
 
-When `testar state widgets`, `testar state text`, or `testar state image` fails, returns incomplete information, or does not yet reflect the expected UI change:
+When `testar state widgets`, `testar state text`, `testar state image`, or `testar state title` fails, returns incomplete information, or does not yet reflect the expected UI change:
 
 - Do not assume the goal failed immediately.
 - Retry the same observation command after a short wait.
@@ -189,6 +221,7 @@ Reusable components and supporting generated data are also persisted through the
    - `testar state widgets`
    - `testar state text`
    - `testar state image`
+   - `testar state title`
 6. Execute one action at a time.
 7. Re-check state after each action.
 8. Add assertions only after the target state is visible.
@@ -206,6 +239,8 @@ Reusable components and supporting generated data are also persisted through the
   - `And the user selects the account 13011 and applies for the loan`
   - `Then a message indicates the loan is denied`
 - `cmd /c "ingenious-cli.bat testar session start -p=Projects\\Parabank --url=https://para.testar.org/ --bdd-goal=parabank/requested_loans_with_small_down_payments_must_be_denied"`
+- `ingenious-cli.bat testar state title`
+- `ingenious-cli.bat testar assert title "--bdd-step=Given the user navigates to the url 'https://para.testar.org/'" "--title-pattern=ParaBank"`
 - `ingenious-cli.bat testar state widgets`
 - `ingenious-cli.bat testar action fill "--bdd-step=When the user logs in with the john/demo credentials" "--selector=[type='text']" "--text=john"`
 - `ingenious-cli.bat testar action fill "--bdd-step=When the user logs in with the john/demo credentials" "--selector=[type='password']" "--text=demo"`

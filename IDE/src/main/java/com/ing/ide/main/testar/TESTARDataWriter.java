@@ -12,6 +12,7 @@ import com.ing.datalib.or.web.WebORObject;
 import com.ing.datalib.or.web.WebORPage;
 import com.ing.datalib.testdata.model.TestDataModel;
 import com.ing.ide.main.mainui.components.testdesign.tree.model.ReusableTreeModel;
+import com.ing.ide.main.testar.playwright.actions.PlaywrightCheck;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightClick;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightFill;
 import com.ing.ide.main.testar.playwright.actions.PlaywrightSelect;
@@ -115,11 +116,15 @@ public class TESTARDataWriter {
         WebORPage webORPage = webOR.addPage(page.title());
 
         String elementDescription = describeElement(playwrightWidget);
-        ObjectGroup objectGroup = webORPage.addObjectGroup(elementDescription);
-        WebORObject webORObject = (WebORObject) objectGroup.addObject(elementDescription);
+        WebORObject webORObject = findWidgetObject(webORPage, elementDescription, playwrightWidget);
+        if (webORObject == null) {
+            String uniqueElementName = findUniqueElementName(webORPage, elementDescription);
+            ObjectGroup objectGroup = webORPage.addObjectGroup(uniqueElementName);
+            webORObject = (WebORObject) objectGroup.addObject(uniqueElementName);
+        }
 
         String text = playwrightWidget.get(PlaywrightTags.WebLocatorText);
-        if (text != null && !text.isEmpty()) {
+        if (hasValue(text)) {
             String evaluatedText = evaluateLocatorWithExactFallback(
                 exact -> {
                     Page.GetByTextOptions opts = new Page.GetByTextOptions().setExact(exact);
@@ -127,11 +132,11 @@ public class TESTARDataWriter {
                 },
                 text
             );
-            webORObject.setAttributeByName("Text", evaluatedText);
+            setAttributeIfPresent(webORObject, "Text", evaluatedText);
         }
 
         String label = playwrightWidget.get(PlaywrightTags.WebLocatorLabel);
-        if (label != null && !label.isEmpty()) {
+        if (hasValue(label)) {
             String evaluatedLabel = evaluateLocatorWithExactFallback(
                 exact -> {
                     Page.GetByLabelOptions opts = new Page.GetByLabelOptions().setExact(exact);
@@ -139,30 +144,121 @@ public class TESTARDataWriter {
                 },
                 label
             );
-            webORObject.setAttributeByName("Label", evaluatedLabel);
+            setAttributeIfPresent(webORObject, "Label", evaluatedLabel);
         }
 
-        webORObject.setAttributeByName("Role", playwrightWidget.get(PlaywrightTags.WebLocatorRole));
-        webORObject.setXpath(playwrightWidget.get(PlaywrightTags.WebLocatorXPath));
-        webORObject.setCss(playwrightWidget.get(PlaywrightTags.WebLocatorCSS));
-        webORObject.setAttributeByName(
+        setAttributeIfPresent(
+            webORObject,
+            "Role",
+            playwrightWidget.get(PlaywrightTags.WebLocatorRole)
+        );
+        setAttributeIfPresent(
+            webORObject,
+            "xpath",
+            playwrightWidget.get(PlaywrightTags.WebLocatorXPath)
+        );
+        setAttributeIfPresent(
+            webORObject,
+            "css",
+            playwrightWidget.get(PlaywrightTags.WebLocatorCSS)
+        );
+        setAttributeIfPresent(
+            webORObject,
             "Placeholder",
             playwrightWidget.get(PlaywrightTags.WebLocatorPlaceholder)
         );
-        webORObject.setAttributeByName(
+        setAttributeIfPresent(
+            webORObject,
             "AltText",
             playwrightWidget.get(PlaywrightTags.WebLocatorAltText)
         );
-        webORObject.setAttributeByName(
+        setAttributeIfPresent(
+            webORObject,
             "Title",
             playwrightWidget.get(PlaywrightTags.WebLocatorTitle)
         );
-        webORObject.setAttributeByName(
+        setAttributeIfPresent(
+            webORObject,
             "TestId",
             playwrightWidget.get(PlaywrightTags.WebLocatorTestId)
         );
+        objectRepository.saveWebPageNow(webORPage);
 
         return webORObject;
+    }
+
+    private WebORObject findWidgetObject(
+        WebORPage webORPage,
+        String elementDescription,
+        PlaywrightWidget playwrightWidget
+    ) {
+        String css = playwrightWidget.get(PlaywrightTags.WebLocatorCSS);
+        String xpath = playwrightWidget.get(PlaywrightTags.WebLocatorXPath);
+        String testId = playwrightWidget.get(PlaywrightTags.WebLocatorTestId);
+
+        for (ObjectGroup<WebORObject> objectGroup : webORPage.getObjectGroups()) {
+            for (WebORObject object : objectGroup.getObjects()) {
+                if (
+                    !isAssertObject(object) &&
+                    isSameWidgetIdentity(object, elementDescription, css, xpath, testId)
+                ) {
+                    return object;
+                }
+            }
+        }
+        return null;
+    }
+
+    private boolean isSameWidgetIdentity(
+        WebORObject object,
+        String elementDescription,
+        String css,
+        String xpath,
+        String testId
+    ) {
+        boolean sameName = elementDescription.equalsIgnoreCase(object.getName());
+        boolean hasMatchingLocator = false;
+        boolean hasConflictingLocator = false;
+
+        String existingCss = object.getAttributeByName("css");
+        if (hasValue(css) && hasValue(existingCss)) {
+            hasMatchingLocator |= css.equals(existingCss);
+            hasConflictingLocator |= !css.equals(existingCss);
+        }
+
+        String existingXpath = object.getAttributeByName("xpath");
+        if (hasValue(xpath) && hasValue(existingXpath)) {
+            hasMatchingLocator |= xpath.equals(existingXpath);
+            hasConflictingLocator |= !xpath.equals(existingXpath);
+        }
+
+        String existingTestId = object.getAttributeByName("TestId");
+        if (hasValue(testId) && hasValue(existingTestId)) {
+            hasMatchingLocator |= testId.equals(existingTestId);
+            hasConflictingLocator |= !testId.equals(existingTestId);
+        }
+
+        if (hasConflictingLocator) {
+            return false;
+        }
+        return sameName || hasMatchingLocator;
+    }
+
+    private boolean isAssertObject(WebORObject object) {
+        String objectName = object.getName();
+        return (
+            objectName != null && objectName.startsWith("assert") && objectName.endsWith("[text]")
+        );
+    }
+
+    private void setAttributeIfPresent(WebORObject object, String attributeName, String value) {
+        if (hasValue(value)) {
+            object.setAttributeByName(attributeName, value);
+        }
+    }
+
+    private boolean hasValue(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String evaluateLocatorWithExactFallback(
@@ -349,7 +445,10 @@ public class TESTARDataWriter {
         String input = "";
         String reference = webORPage.getName();
 
-        if (action instanceof PlaywrightClick) {
+        if (action instanceof PlaywrightCheck) {
+            description = "Check the [<Object>] element";
+            testAction = "Check";
+        } else if (action instanceof PlaywrightClick) {
             description = "Click the [<Object>]";
             testAction = "Click";
         } else if (action instanceof PlaywrightFill) {
@@ -370,11 +469,18 @@ public class TESTARDataWriter {
         String webPageTitle = state.getPage().title();
         WebORPage webORPage = webOR.addPage(webPageTitle);
 
-        // Add the element to the OR
-        String elementDescription = describeAssertElement(assertText);
-        ObjectGroup objectGroup = webORPage.addObjectGroup(elementDescription);
-        WebORObject webORObject = (WebORObject) objectGroup.addObject(elementDescription);
+        // Reuse an assert object only when its stored text is the same.
+        WebORObject webORObject = findAssertObjectByText(webORPage, assertText);
+        if (webORObject == null) {
+            String elementDescription = findUniqueElementName(
+                webORPage,
+                describeAssertElement(assertText)
+            );
+            ObjectGroup objectGroup = webORPage.addObjectGroup(elementDescription);
+            webORObject = (WebORObject) objectGroup.addObject(elementDescription);
+        }
         webORObject.setAttributeByName("Text", assertText);
+        objectRepository.saveWebPageNow(webORPage);
 
         // Create an INGenious action test step
         String object = webORObject.getName();
@@ -384,6 +490,48 @@ public class TESTARDataWriter {
         String reference = webORPage.getName();
 
         addAbstractTestStep(bddStep, object, description, testAction, input, reference);
+    }
+
+    public void addTitleAssertTestStep(String bddStep, String titlePattern) {
+        addAbstractTestStep(
+            bddStep,
+            "Browser",
+            "Assert if Page has title [<Data>]",
+            "assertPageTitleMatches",
+            "@" + titlePattern,
+            ""
+        );
+    }
+
+    private WebORObject findAssertObjectByText(WebORPage webORPage, String assertText) {
+        for (ObjectGroup<WebORObject> objectGroup : webORPage.getObjectGroups()) {
+            for (WebORObject object : objectGroup.getObjects()) {
+                if (
+                    isAssertObject(object) &&
+                    Objects.equals(object.getAttributeByName("Text"), assertText)
+                ) {
+                    return object;
+                }
+            }
+        }
+        return null;
+    }
+
+    private String findUniqueElementName(WebORPage webORPage, String baseName) {
+        String candidate = baseName;
+        int suffix = 2;
+        int typeStart = baseName.lastIndexOf('[');
+        String nameStem = baseName;
+        String typeSuffix = "";
+        if (typeStart > 0 && baseName.endsWith("]")) {
+            nameStem = baseName.substring(0, typeStart);
+            typeSuffix = baseName.substring(typeStart);
+        }
+
+        while (webORPage.getObjectGroupByName(candidate) != null) {
+            candidate = nameStem + "_" + suffix++ + typeSuffix;
+        }
+        return candidate;
     }
 
     private String describeAssertElement(String assertText) {

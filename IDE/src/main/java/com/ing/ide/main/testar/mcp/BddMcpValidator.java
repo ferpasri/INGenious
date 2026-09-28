@@ -48,6 +48,16 @@ public final class BddMcpValidator implements McpInterface {
     }
 
     @Override
+    public Feedback executeCheckAction(String bddStep, String cssSelector) {
+        Feedback validation = tracker.validateBddStep(bddStep);
+        if (validation != null) return validation;
+
+        Feedback result = mcpDriver.executeCheckAction(bddStep, cssSelector);
+        recordIfSuccess(bddStep, result);
+        return result;
+    }
+
+    @Override
     public Feedback executeFillAction(String bddStep, String cssSelector, String fillText) {
         Feedback validation = tracker.validateBddStep(bddStep);
         if (validation != null) return validation;
@@ -83,11 +93,26 @@ public final class BddMcpValidator implements McpInterface {
     }
 
     @Override
+    public Feedback getStateTitle() {
+        return mcpDriver.getStateTitle();
+    }
+
+    @Override
     public Feedback addStepAssert(String bddStep, String assertText) {
         Feedback validation = tracker.validateBddStep(bddStep);
         if (validation != null) return validation;
 
         Feedback result = mcpDriver.addStepAssert(bddStep, assertText);
+        recordIfSuccess(bddStep, result);
+        return result;
+    }
+
+    @Override
+    public Feedback addTitleAssert(String bddStep, String titlePattern) {
+        Feedback validation = tracker.validateBddStep(bddStep);
+        if (validation != null) return validation;
+
+        Feedback result = mcpDriver.addTitleAssert(bddStep, titlePattern);
         recordIfSuccess(bddStep, result);
         return result;
     }

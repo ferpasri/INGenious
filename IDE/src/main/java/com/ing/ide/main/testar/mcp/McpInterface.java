@@ -47,6 +47,17 @@ public interface McpInterface {
         ) String cssSelector
     );
 
+    @McpMethod(
+        description = "Use a CSS selector to check a radio button or checkbox. Use this instead of click for radio and checkbox inputs."
+    )
+    Feedback executeCheckAction(
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "cssSelector",
+            description = "The CSS selector of the radio button or checkbox input."
+        ) String cssSelector
+    );
+
     @McpMethod(description = "Use a CSS selector to fill text into an input element.")
     Feedback executeFillAction(
         @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
@@ -84,6 +95,9 @@ public interface McpInterface {
     @McpMethod(description = "Get a list of the text of all current visible GUI web elements.")
     Feedback getStateVisualText();
 
+    @McpMethod(description = "Get the current web state-page title.")
+    Feedback getStateTitle();
+
     @McpMethod(description = "Add a unique text that can be used to assert a BDD step.")
     Feedback addStepAssert(
         @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
@@ -91,6 +105,15 @@ public interface McpInterface {
             name = "assertText",
             description = "A visible unique text that can be used as text locator assert."
         ) String assertText
+    );
+
+    @McpMethod(description = "Add a state-page title pattern assertion for a BDD step.")
+    Feedback addTitleAssert(
+        @McpParam(name = "bddStep", description = bddStepDescription) String bddStep,
+        @McpParam(
+            name = "titlePattern",
+            description = "A Java regular expression matching the current and expected state-page title."
+        ) String titlePattern
     );
 
     @McpMethod(

@@ -172,7 +172,10 @@ public class TestarCommand implements Callable<Integer> {
         mixinStandardHelpOptions = true,
         description = "Query TESTAR automation state",
         subcommands = {
-            StateCommand.Widgets.class, StateCommand.Text.class, StateCommand.Image.class
+            StateCommand.Widgets.class,
+            StateCommand.Text.class,
+            StateCommand.Image.class,
+            StateCommand.Title.class
         }
     )
     public static class StateCommand implements Callable<Integer> {
@@ -213,6 +216,19 @@ public class TestarCommand implements Callable<Integer> {
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
                 return new ClientFacade().send(cli, "state.image");
+            }
+        }
+
+        @Command(
+            name = "title",
+            description = "Get the web state-page title from the current TESTAR session"
+        )
+        public static class Title implements Callable<Integer> {
+
+            @Override
+            public Integer call() {
+                INGeniousCLI cli = INGeniousCLI.getInstance();
+                return new ClientFacade().send(cli, "state.title");
             }
         }
     }
@@ -258,6 +274,7 @@ public class TestarCommand implements Callable<Integer> {
         description = "Execute TESTAR actions",
         subcommands = {
             ActionCommand.Click.class,
+            ActionCommand.Check.class,
             ActionCommand.Fill.class,
             ActionCommand.Select.class,
             ActionCommand.History.class
@@ -291,6 +308,32 @@ public class TestarCommand implements Callable<Integer> {
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
                 return new ClientFacade().send(cli, "action.click", bddStep, cssSelector);
+            }
+        }
+
+        @Command(
+            name = "check",
+            description = "Check a radio button or checkbox in the current TESTAR session"
+        )
+        public static class Check implements Callable<Integer> {
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the check action"
+            )
+            private String bddStep;
+
+            @Option(
+                names = { "--selector" },
+                required = true,
+                description = "CSS selector of the radio button or checkbox input"
+            )
+            private String cssSelector;
+
+            @Override
+            public Integer call() {
+                INGeniousCLI cli = INGeniousCLI.getInstance();
+                return new ClientFacade().send(cli, "action.check", bddStep, cssSelector);
             }
         }
 
@@ -372,7 +415,7 @@ public class TestarCommand implements Callable<Integer> {
         name = "assert",
         mixinStandardHelpOptions = true,
         description = "Add TESTAR assertions",
-        subcommands = { AssertCommand.Add.class }
+        subcommands = { AssertCommand.Add.class, AssertCommand.Title.class }
     )
     public static class AssertCommand implements Callable<Integer> {
 
@@ -402,6 +445,29 @@ public class TestarCommand implements Callable<Integer> {
             public Integer call() {
                 INGeniousCLI cli = INGeniousCLI.getInstance();
                 return new ClientFacade().send(cli, "assert.add", bddStep, assertText);
+            }
+        }
+
+        @Command(name = "title", description = "Add a state-page title assertion for a BDD step")
+        public static class Title implements Callable<Integer> {
+            @Option(
+                names = { "--bdd-step" },
+                required = true,
+                description = "BDD step associated with the assertion"
+            )
+            private String bddStep;
+
+            @Option(
+                names = { "--title-pattern" },
+                required = true,
+                description = "Java regular expression matching the expected state-page title"
+            )
+            private String titlePattern;
+
+            @Override
+            public Integer call() {
+                INGeniousCLI cli = INGeniousCLI.getInstance();
+                return new ClientFacade().send(cli, "assert.title", bddStep, titlePattern);
             }
         }
     }

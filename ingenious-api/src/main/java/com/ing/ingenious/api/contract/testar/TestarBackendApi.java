@@ -18,7 +18,11 @@ public interface TestarBackendApi {
 
     TestarResult getStateVisualText();
 
+    TestarResult getStateTitle();
+
     TestarResult executeClickAction(String bddStep, String cssSelector);
+
+    TestarResult executeCheckAction(String bddStep, String cssSelector);
 
     TestarResult executeFillAction(String bddStep, String cssSelector, String fillText);
 
@@ -27,4 +31,6 @@ public interface TestarBackendApi {
     TestarResult getExecutedActions();
 
     TestarResult addAssert(String bddStep, String assertText);
+
+    TestarResult addTitleAssert(String bddStep, String titlePattern);
 }

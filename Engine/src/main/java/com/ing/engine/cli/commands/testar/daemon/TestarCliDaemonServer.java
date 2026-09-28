@@ -98,10 +98,19 @@ public final class TestarCliDaemonServer {
             if ("state.image".equals(command)) {
                 return wrapResult(requireBackend().getStateImage());
             }
+            if ("state.title".equals(command)) {
+                return wrapResult(requireBackend().getStateTitle());
+            }
             if ("action.click".equals(command)) {
                 return wrapResult(
                     requireBackend()
                         .executeClickAction(request.argumentAt(0), request.argumentAt(1))
+                );
+            }
+            if ("action.check".equals(command)) {
+                return wrapResult(
+                    requireBackend()
+                        .executeCheckAction(request.argumentAt(0), request.argumentAt(1))
                 );
             }
             if ("action.fill".equals(command)) {
@@ -130,6 +139,11 @@ public final class TestarCliDaemonServer {
             if ("assert.add".equals(command)) {
                 return wrapResult(
                     requireBackend().addAssert(request.argumentAt(0), request.argumentAt(1))
+                );
+            }
+            if ("assert.title".equals(command)) {
+                return wrapResult(
+                    requireBackend().addTitleAssert(request.argumentAt(0), request.argumentAt(1))
                 );
             }
             if ("daemon.ping".equals(command)) {

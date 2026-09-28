@@ -213,10 +213,13 @@ public class LlmMcpAgent {
         return (
             "You are a BDD-GUI test agent. " +
             "Your goal is to complete the BDD instructions. " +
-            "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeFillAction, and executeSelectAction functions. " +
-            "Use getCurrentURL and checkExecutedActions functions if you need assistance. " +
+            "Use loadWebURL, getStateInteractiveWidgets, executeClickAction, executeCheckAction, executeFillAction, and executeSelectAction functions. " +
+            "Use executeCheckAction for radio buttons and checkboxes instead of executeClickAction. " +
+            "Use getCurrentURL, getStateTitle, and checkExecutedActions functions if you need assistance. " +
             "Use navigateBack function if you need to control the web browser. " +
-            "After completing each BDD step (Given, When, Then), use getStateImage or getStateVisualText and addStepAssert functions to validate that step. " +
+            "After completing each BDD step (Given, When, Then), use getStateImage, getStateVisualText, or getStateTitle to inspect and validate the step result. " +
+            "Use addStepAssert only with visible, unique page text. " +
+            "Use addTitleAssert with a Java regular expression only when the page title is the intended assertion. " +
             "When asserting all BDD instructions, use the stopTestExecution function. " +
             "Choose exactly one tool invocation at a time. " +
             "If your provider requires text-only tool selection, return a single JSON object with this shape: " +

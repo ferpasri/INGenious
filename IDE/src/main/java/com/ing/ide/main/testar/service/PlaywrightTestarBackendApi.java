@@ -138,6 +138,11 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
     }
 
     @Override
+    public TestarResult getStateTitle() {
+        return toResult(stateService.getStateTitle(context), "ok");
+    }
+
+    @Override
     public TestarResult executeClickAction(String bddStep, String cssSelector) {
         Feedback validation = validateBddStep(bddStep);
         if (validation != null) {
@@ -145,6 +150,22 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         }
 
         Feedback result = actionService.executeClickAction(
+            context,
+            normalizedBddStep(bddStep),
+            cssSelector
+        );
+        recordIfSuccess(bddStep, result);
+        return toResult(result, "ok");
+    }
+
+    @Override
+    public TestarResult executeCheckAction(String bddStep, String cssSelector) {
+        Feedback validation = validateBddStep(bddStep);
+        if (validation != null) {
+            return toResult(validation, "error");
+        }
+
+        Feedback result = actionService.executeCheckAction(
             context,
             normalizedBddStep(bddStep),
             cssSelector
@@ -215,6 +236,22 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
             context,
             normalizedBddStep(bddStep),
             assertText
+        );
+        recordIfSuccess(bddStep, result);
+        return toResult(result, "ok");
+    }
+
+    @Override
+    public TestarResult addTitleAssert(String bddStep, String titlePattern) {
+        Feedback validation = validateBddStep(bddStep);
+        if (validation != null) {
+            return toResult(validation, "error");
+        }
+
+        Feedback result = assertionService.addTitleAssert(
+            context,
+            normalizedBddStep(bddStep),
+            titlePattern
         );
         recordIfSuccess(bddStep, result);
         return toResult(result, "ok");

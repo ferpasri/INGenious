@@ -72,6 +72,8 @@ public class PlaywrightTags extends TagsBase {
 
     public static final Tag<Boolean> WebIsFillable = from("WebIsFillable", Boolean.class);
 
+    public static final Tag<Boolean> WebIsChecked = from("WebIsChecked", Boolean.class);
+
     public static Set<Tag<?>> getAllTags() {
         return tagSet;
     }
