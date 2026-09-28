@@ -61,8 +61,8 @@ public class CodexAgentRunner {
             valueOrDefault(settings.apiKeyEnvVarName, "OPENAI_API_KEY")
         );
         request.put("baseUrl", valueOrEmpty(settings.baseUrl));
-        request.put("model", valueOrDefault(settings.model, "gpt-5.4"));
-        request.put("reasoningEffort", valueOrDefault(settings.reasoningEffort, "medium"));
+        request.put("model", valueOrDefault(settings.model, "gpt-6-luna"));
+        request.put("reasoningEffort", valueOrDefault(settings.reasoningEffort, "low"));
         request.put("sandboxMode", valueOrDefault(settings.sandboxMode, "workspace-write"));
         request.put("approvalPolicy", valueOrDefault(settings.approvalPolicy, "never"));
         request.put(

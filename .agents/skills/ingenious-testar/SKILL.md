@@ -19,6 +19,8 @@ Use these runtime-local paths:
 - When a Codex-style agent invokes the packaged Windows launcher, prefer:
   - `cmd /c "ingenious-cli.bat ..."`
 - Do not rely on direct PowerShell execution of the `.bat` file when a `cmd /c` form is available.
+- When invoking `cmd.exe` from PowerShell, do not use backslashes to escape quotes. Prefer:
+  - `cmd /c 'ingenious-cli.bat testar ... "--bdd-step=..." "--selector=..."'`
 - The TESTAR CLI parser expects long options in `--name=value` form, not `--name value`.
 - For values containing spaces, keep the full `--name=value with spaces` token quoted as a single argument.
 - On Windows, if PowerShell quoting becomes brittle, prefer `Start-Process -FilePath cmd.exe -ArgumentList ... -Wait -NoNewWindow` and pass each `--name=value` token explicitly.
@@ -125,14 +127,16 @@ Use the selector exactly as exposed by the latest widget state when possible.
 
 ## Selector and action rules
 
-- Use `testar state widgets` before acting.
+- Use `testar state widgets` before the first action on a page and whenever the previous widget
+  observation has been invalidated.
 - Only execute actions against selectors visible in the latest state output.
 - Use `testar action click` for links, buttons, and other clickable widgets.
 - Use `testar action check` for radio buttons and checkboxes instead of clicking their native `input` element.
 - For a radio or checkbox, prefer a stable selector using its `type`, `name`, and `value` when those attributes are present in the latest state.
 - Keep `<bddStep>` stable across all commands that belong to the same generated scenario step.
 - Keep selectors grounded in the latest observed state rather than guessing them.
-- Re-check state after each action before deciding the next one.
+- Re-check state after actions that can change the page structure or when the latest observation is
+  no longer sufficient for the next decision.
 
 The check operation requires a native `input` whose type is `radio` or `checkbox`. It first
 attempts a normal Playwright check, then retries with a forced check if the control is obstructed
@@ -172,6 +176,26 @@ state again rather than recording a guessed action.
 - `testar state title` returns the current web state-page title without persisting a step.
 - A successful `testar assert title` persists the supplied pattern as an
   `assertPageTitleMatches` Browser assertion.
+
+## Efficient execution
+
+- Read this skill once. Do not reread it in sections unless required information was unavailable.
+- Check project existence without recursively inspecting the complete project before starting.
+- Use the lightest state command that provides the required evidence:
+  - `state widgets` when selectors or available controls are needed
+  - `state text` when confirming visible content
+  - `state title` when confirming page identity
+  - `state image` only when textual state is insufficient
+- Reuse the latest widget state for consecutive fill, check, or select actions on the same unchanged
+  page.
+- Refresh `state widgets` after navigation, submission, modal changes, dynamic transitions, or a
+  failed action.
+- Run each mutating TESTAR command in a separate shell invocation unless every command's exit code
+  is checked immediately. A later successful command must not hide an earlier failed action or
+  assertion.
+- Do not inspect generated project files unless requested or session status or history indicates a
+  problem.
+- Use `action history` and `session status` once near completion rather than after every step.
 
 ## Resilience and retry behavior rules
 
@@ -223,7 +247,8 @@ Reusable components and supporting generated data are also persisted through the
    - `testar state image`
    - `testar state title`
 6. Execute one action at a time.
-7. Re-check state after each action.
+7. Refresh the relevant state evidence when an action changes the page or invalidates the previous
+   observation.
 8. Add assertions only after the target state is visible.
 9. Stop the session with `testar session stop`.
 10. Verify generated artifacts in the target INGenious project.

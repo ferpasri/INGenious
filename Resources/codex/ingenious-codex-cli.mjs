@@ -60,12 +60,12 @@ async function promptSettings() {
                 ""
         );
         const model = normalizeAnswer(
-                await rl.question("Model [gpt-5.4-mini]: "),
-                "gpt-5.4-mini"
+                await rl.question("Model [gpt-6-luna]: "),
+                "gpt-6-luna"
         );
         const reasoningEffort = normalizeAnswer(
-                await rl.question("Reasoning effort [medium]: "),
-                "medium"
+                await rl.question("Reasoning effort [low]: "),
+                "low"
         );
         const sandboxMode = normalizeAnswer(
                 await rl.question("Sandbox mode [danger-full-access]: "),
