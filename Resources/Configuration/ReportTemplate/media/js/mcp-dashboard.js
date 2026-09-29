@@ -246,7 +246,7 @@
                 ${invalidDetail}
                 <div class="chart-box" style="margin-top:14px">
                   <h3>Run Details</h3>
-                  ${runs.length ? `<table><thead><tr><th>Run</th><th>Status</th><th>Invalids</th><th>Latency</th><th>Tokens</th><th>Tool Calls</th><th>Steps</th><th>Timeline</th><th>Started</th></tr></thead><tbody>${runs.map(run => `<tr>
+                  ${runs.length ? `<table><thead><tr><th>Run</th><th>Status</th><th>Invalids</th><th>Latency</th><th>Tokens</th><th>Tool Calls</th><th>Steps</th><th>Timeline</th><th>Started</th><th>Trace</th></tr></thead><tbody>${runs.map(run => `<tr>
                     <td>${esc(run.runName)}</td>
                     <td><span class="pill ${isSuccess(run) ? "ok" : "bad"}">${isSuccess(run) ? "Success" : "Failed"}</span></td>
                     <td style="color:${Number(run.invalidActions || 0) > 0 ? "#a43641" : "#257c47"};font-weight:700">${intFmt(run.invalidActions)}</td>
@@ -256,6 +256,7 @@
                     <td>${intFmt(run.totalSteps)}</td>
                     <td>${latencyMini(run)}</td>
                     <td class="small">${esc(run.startedAt)}</td>
+                    <td>${run.tracePath ? `<a href="${esc(run.tracePath)}" target="_blank" rel="noreferrer">Inspect Trace</a>` : "Unavailable"}</td>
                   </tr>`).join("")}</tbody></table>` : `<div class="empty">No runs available in this model group.</div>`}
                 </div>
               </div>

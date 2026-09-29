@@ -14,10 +14,16 @@ import com.ing.ide.main.testar.mcp.provider.LlmProviderException;
 import com.ing.ide.main.testar.mcp.provider.LlmProviderFactory;
 import com.ing.ide.main.testar.mcp.provider.LlmProviderResponse;
 import com.ing.ide.main.testar.mcp.provider.LlmToolCall;
+import com.ing.ide.main.testar.trace.AgentTraceContext;
+import com.ing.ide.main.testar.trace.AgentTraceEventType;
+import com.ing.ide.main.testar.trace.AgentTraceSource;
+import com.ing.ide.main.testar.trace.AgentTraceStatus;
+import com.ing.ide.main.testar.trace.AgentTraceSupport;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,6 +39,7 @@ public class LlmMcpAgent {
     private final McpInterface mcpInterface;
     private final LlmRunMetrics runMetrics;
     private final LlmMetricsWriter metricsWriter;
+    private final AgentTraceContext traceContext;
 
     public LlmMcpAgent(Project project, McpAgentSettings settings) {
         this.maxActions = settings.maxActions != null ? settings.maxActions : 10;
@@ -40,6 +47,7 @@ public class LlmMcpAgent {
         this.metricsWriter = new LlmMetricsWriter();
 
         PlaywrightMcpDriver mcpDriver = new PlaywrightMcpDriver(project, settings.bddScenarioName);
+        this.traceContext = mcpDriver.getTraceContext();
         this.bddStepTracker = new BddStepTracker(bddInstructions);
         this.mcpInterface = new BddMcpValidator(mcpDriver, bddStepTracker);
         this.provider = LlmProviderFactory.create(settings);
@@ -52,10 +60,36 @@ public class LlmMcpAgent {
                 settings.llmProviderName,
                 provider.getModelName()
             );
+        this.runMetrics.setTraceReference(traceContext.getRunId(), mcpDriver.getTracePath());
         logProviderConfiguration(settings);
     }
 
     public String runLLMAgent() {
+        traceContext.append(
+            AgentTraceSource.MCP,
+            AgentTraceEventType.RUN_STARTED,
+            AgentTraceStatus.INFO,
+            "",
+            "mcp.run",
+            "",
+            AgentTraceSupport.arguments(
+                "scenarioName",
+                runMetrics.getScenarioName(),
+                "providerName",
+                runMetrics.getProviderName(),
+                "modelName",
+                runMetrics.getModelName(),
+                "reasoningLevel",
+                runMetrics.getReasoningLevel(),
+                "visionEnabled",
+                runMetrics.isVisionEnabled()
+            ),
+            "Studio MCP run started.",
+            Map.of(),
+            0L,
+            Map.of(),
+            Map.of()
+        );
         final List<Map<String, Object>> input = defineInput();
         final List<Map<String, Object>> tools = McpToolBuilder.from(McpInterface.class);
         final McpToolExecutor<McpInterface> executor = McpToolExecutor.of(
@@ -84,6 +118,22 @@ public class LlmMcpAgent {
                     visionRequest
                 );
                 runMetrics.recordPromptLatency((System.nanoTime() - stepStartNanos) / 1_000_000L);
+                if (!response.getOutputText().isBlank()) {
+                    traceContext.append(
+                        AgentTraceSource.MCP,
+                        AgentTraceEventType.AGENT_MESSAGE,
+                        AgentTraceStatus.INFO,
+                        "",
+                        "provider.response",
+                        "",
+                        Map.of(),
+                        AgentTraceSupport.safeObservation(response.getOutputText(), 4000),
+                        Map.of(),
+                        (System.nanoTime() - stepStartNanos) / 1_000_000L,
+                        Map.of(),
+                        Map.of()
+                    );
+                }
 
                 int lastTokenUsage = provider.getLastTokenUsage();
                 logTokenUsage(lastTokenUsage);
@@ -96,6 +146,13 @@ public class LlmMcpAgent {
                 List<LlmToolCall> toolCalls = response.getToolCalls();
                 if (toolCalls == null || toolCalls.isEmpty()) {
                     runMetrics.incrementNoToolResponse();
+                    traceContext.append(
+                        AgentTraceSource.MCP,
+                        AgentTraceEventType.OPERATION_COMPLETED,
+                        AgentTraceStatus.REJECTED,
+                        "provider.response",
+                        "No tool call returned by provider."
+                    );
                     String feedback =
                         "ISSUE: No tool was selected. Please review the last results.";
                     addInfoLog(feedback);
@@ -118,8 +175,90 @@ public class LlmMcpAgent {
                     addInfoLog("DEBUG toolName: " + toolName);
                     addInfoLog("DEBUG argumentsJson: " + argumentsJson);
 
-                    Object resultObj = executor.execute(toolName, argumentsJson);
+                    String operationId = callId != null && !callId.isBlank()
+                        ? callId
+                        : UUID.randomUUID().toString();
+                    traceContext.beginOperation(operationId);
+                    traceContext.append(
+                        AgentTraceSource.MCP,
+                        AgentTraceEventType.TOOL_REQUESTED,
+                        AgentTraceStatus.STARTED,
+                        readBddStep(argumentsJson),
+                        toolName,
+                        callId,
+                        parseTraceArguments(toolName, argumentsJson),
+                        "Provider requested TESTAR tool.",
+                        Map.of(),
+                        0L,
+                        Map.of(),
+                        Map.of()
+                    );
+                    long toolStartNanos = System.nanoTime();
+                    Object resultObj;
+                    try {
+                        resultObj = executor.execute(toolName, argumentsJson);
+                    } catch (Exception exception) {
+                        traceContext.append(
+                            AgentTraceSource.MCP,
+                            AgentTraceEventType.RUN_ERROR,
+                            AgentTraceStatus.FAILED,
+                            readBddStep(argumentsJson),
+                            toolName,
+                            callId,
+                            Map.of(),
+                            exception.getMessage() != null
+                                ? exception.getMessage()
+                                : exception.getClass().getName(),
+                            Map.of(),
+                            (System.nanoTime() - toolStartNanos) / 1_000_000L,
+                            Map.of(),
+                            Map.of()
+                        );
+                        throw exception;
+                    }
                     Feedback feedback = resultObj instanceof Feedback ? (Feedback) resultObj : null;
+                    Feedback traceFeedback = isStateImageTool(toolName) && feedback != null
+                        ? Feedback.validContext(
+                            "Screenshot captured; binary image omitted from trace."
+                        )
+                        : feedback;
+                    if (isPasswordFill(toolName, argumentsJson) && feedback != null) {
+                        traceFeedback =
+                            feedback.isIssue()
+                                ? Feedback.issue(
+                                    feedback.getCode(),
+                                    "Password field action failed; entered value omitted."
+                                )
+                                : Feedback.validContext(
+                                    "Password field action completed; entered value omitted."
+                                );
+                    }
+                    AgentTraceSupport.appendFeedback(
+                        traceContext,
+                        AgentTraceSource.TESTAR,
+                        readBddStep(argumentsJson),
+                        toolName,
+                        traceFeedback,
+                        (System.nanoTime() - toolStartNanos) / 1_000_000L
+                    );
+                    traceContext.append(
+                        AgentTraceSource.TESTAR,
+                        AgentTraceEventType.OPERATION_COMPLETED,
+                        feedback != null && feedback.isIssue()
+                            ? AgentTraceStatus.FAILED
+                            : AgentTraceStatus.SUCCEEDED,
+                        readBddStep(argumentsJson),
+                        toolName,
+                        callId,
+                        Map.of(),
+                        traceFeedback != null
+                            ? AgentTraceSupport.safeObservation(traceFeedback.toString(), 2000)
+                            : "Tool returned no feedback object.",
+                        Map.of(),
+                        (System.nanoTime() - toolStartNanos) / 1_000_000L,
+                        Map.of(),
+                        Map.of()
+                    );
                     boolean resultIssue = feedback != null && feedback.isIssue();
                     if (resultIssue) {
                         recordInvalidAction(toolName, argumentsJson, feedback);
@@ -174,6 +313,7 @@ public class LlmMcpAgent {
                     } else {
                         addInfoLog("DEBUG result: " + result);
                     }
+                    traceContext.endOperation();
                 }
 
                 input.addAll(toolCallResultItems);
@@ -182,6 +322,13 @@ public class LlmMcpAgent {
             } catch (LlmProviderException exception) {
                 if (exception.isRetryable()) {
                     runMetrics.incrementRetry();
+                    traceContext.append(
+                        AgentTraceSource.MCP,
+                        AgentTraceEventType.RETRY_SCHEDULED,
+                        AgentTraceStatus.INFO,
+                        "provider.executePrompt",
+                        exception.getMessage()
+                    );
                     long waitTime = exception.getRetryAfterMillis() > 0
                         ? exception.getRetryAfterMillis()
                         : 10000L;
@@ -198,6 +345,16 @@ public class LlmMcpAgent {
                     "Stop execution due to LLM call fail: " + exception.getMessage()
                 );
             } catch (Exception exception) {
+                traceContext.endOperation();
+                traceContext.append(
+                    AgentTraceSource.MCP,
+                    AgentTraceEventType.RUN_ERROR,
+                    AgentTraceStatus.FAILED,
+                    "agent.loop",
+                    exception.getMessage() != null
+                        ? exception.getMessage()
+                        : exception.getClass().getName()
+                );
                 recordInvalidAction("agent_internal", "", Feedback.issue(exception.getMessage()));
                 addSevereLog("LLM step failed: " + exception.getMessage());
                 LOGGER.log(Level.SEVERE, "TESTAR MCP step failed", exception);
@@ -315,14 +472,72 @@ public class LlmMcpAgent {
 
     private String finalizeSuccess(int executedSteps, String message) {
         runMetrics.markSuccess(executedSteps, bddStepTracker);
+        traceContext.append(
+            AgentTraceSource.MCP,
+            AgentTraceEventType.RUN_FINISHED,
+            AgentTraceStatus.SUCCEEDED,
+            message
+        );
+        traceContext.close();
         metricsWriter.writeRunMetrics(runMetrics);
         return message;
     }
 
     private String finalizeFailure(int executedSteps, String message) {
         runMetrics.markFailure(executedSteps, message, bddStepTracker);
+        traceContext.append(
+            AgentTraceSource.MCP,
+            AgentTraceEventType.RUN_FINISHED,
+            AgentTraceStatus.FAILED,
+            message
+        );
+        traceContext.close();
         metricsWriter.writeRunMetrics(runMetrics);
         return message;
+    }
+
+    private boolean isStateImageTool(String toolName) {
+        return McpNames.of(McpInterface::getStateImage).equals(toolName);
+    }
+
+    private boolean isPasswordFill(String toolName, String argumentsJson) {
+        if (!"executeFillAction".equals(toolName)) {
+            return false;
+        }
+        try {
+            String selector = mapper.readTree(argumentsJson).path("cssSelector").asText("");
+            return selector.toLowerCase().contains("password");
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
+    private String readBddStep(String argumentsJson) {
+        try {
+            return mapper.readTree(argumentsJson).path("bddStep").asText("");
+        } catch (Exception exception) {
+            return "";
+        }
+    }
+
+    private Map<String, Object> parseTraceArguments(String toolName, String argumentsJson) {
+        try {
+            Map<String, Object> arguments = mapper.convertValue(
+                mapper.readTree(argumentsJson),
+                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}
+            );
+            Object selector = arguments.get("cssSelector");
+            if (
+                selector != null &&
+                selector.toString().toLowerCase().contains("password") &&
+                "executeFillAction".equals(toolName)
+            ) {
+                arguments.put("fillText", "[REDACTED]");
+            }
+            return arguments;
+        } catch (Exception exception) {
+            return Map.of("arguments", "[unavailable]");
+        }
     }
 
     private void recordInvalidAction(String toolName, String argumentsJson, Feedback feedback) {
@@ -339,6 +554,28 @@ public class LlmMcpAgent {
             classification.getReasonCode(),
             classification.getReasonSummary(),
             feedback != null ? feedback.toString() : ""
+        );
+        Map<String, Object> classificationDetails = AgentTraceSupport.arguments(
+            "reasonCode",
+            classification.getReasonCode(),
+            "reasonSummary",
+            classification.getReasonSummary(),
+            "feedbackCode",
+            feedback != null ? feedback.getCode().name() : ""
+        );
+        traceContext.append(
+            AgentTraceSource.TESTAR,
+            AgentTraceEventType.FEEDBACK_PROVIDED,
+            AgentTraceStatus.FAILED,
+            classification.getBddStep(),
+            toolName,
+            traceContext.getCurrentOperationId(),
+            AgentTraceSupport.arguments("selector", classification.getSelector()),
+            classification.getReasonSummary(),
+            classificationDetails,
+            0L,
+            Map.of(),
+            Map.of()
         );
     }
 

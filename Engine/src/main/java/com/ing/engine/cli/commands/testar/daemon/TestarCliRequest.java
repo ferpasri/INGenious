@@ -7,14 +7,32 @@ import java.util.List;
 public final class TestarCliRequest {
     private final String command;
     private final List<String> arguments;
+    private final String traceRunId;
+    private final String traceDirectory;
 
-    private TestarCliRequest(String command, List<String> arguments) {
+    private TestarCliRequest(
+        String command,
+        List<String> arguments,
+        String traceRunId,
+        String traceDirectory
+    ) {
         this.command = command;
         this.arguments = Collections.unmodifiableList(new ArrayList<>(arguments));
+        this.traceRunId = traceRunId != null ? traceRunId : "";
+        this.traceDirectory = traceDirectory != null ? traceDirectory : "";
     }
 
     public static TestarCliRequest of(String command, List<String> arguments) {
-        return new TestarCliRequest(command, arguments);
+        return new TestarCliRequest(command, arguments, "", "");
+    }
+
+    public static TestarCliRequest of(
+        String command,
+        List<String> arguments,
+        String traceRunId,
+        String traceDirectory
+    ) {
+        return new TestarCliRequest(command, arguments, traceRunId, traceDirectory);
     }
 
     public String getCommand() {
@@ -23,6 +41,14 @@ public final class TestarCliRequest {
 
     public List<String> getArguments() {
         return arguments;
+    }
+
+    public String getTraceRunId() {
+        return traceRunId;
+    }
+
+    public String getTraceDirectory() {
+        return traceDirectory;
     }
 
     public String argumentAt(int index) {

@@ -39,12 +39,18 @@ public class LlmMetricsDashboardWriter {
     }
 
     private void copyDashboardAssets(Path metricsRoot) throws IOException {
-        Path htmlSource = Paths.get(
-            AppResourcePath.getReportTemplatePath(),
-            DASHBOARD_TEMPLATE_HTML
+        Path htmlSource = resolveReportAsset(
+            Paths.get(AppResourcePath.getReportTemplatePath(), DASHBOARD_TEMPLATE_HTML),
+            Paths.get("html", DASHBOARD_TEMPLATE_HTML)
         );
-        Path cssSource = Paths.get(AppResourcePath.getReportResourcePath(), "css", DASHBOARD_CSS);
-        Path jsSource = Paths.get(AppResourcePath.getReportResourcePath(), "js", DASHBOARD_JS);
+        Path cssSource = resolveReportAsset(
+            Paths.get(AppResourcePath.getReportResourcePath(), "css", DASHBOARD_CSS),
+            Paths.get("media", "css", DASHBOARD_CSS)
+        );
+        Path jsSource = resolveReportAsset(
+            Paths.get(AppResourcePath.getReportResourcePath(), "js", DASHBOARD_JS),
+            Paths.get("media", "js", DASHBOARD_JS)
+        );
 
         Path cssTargetDir = metricsRoot.resolve("media").resolve("css");
         Path jsTargetDir = metricsRoot.resolve("media").resolve("js");
@@ -67,6 +73,26 @@ public class LlmMetricsDashboardWriter {
             jsTargetDir.resolve(DASHBOARD_JS),
             StandardCopyOption.REPLACE_EXISTING
         );
+    }
+
+    private Path resolveReportAsset(Path configuredPath, Path sourceRelativePath)
+        throws IOException {
+        if (Files.isRegularFile(configuredPath)) {
+            return configuredPath;
+        }
+        Path sourceRoot = Paths.get("Resources", "Configuration", "ReportTemplate");
+        for (Path candidate : List.of(
+            sourceRoot.resolve(sourceRelativePath),
+            Paths
+                .get("..", "Resources", "Configuration", "ReportTemplate")
+                .resolve(sourceRelativePath)
+                .normalize()
+        )) {
+            if (Files.isRegularFile(candidate)) {
+                return candidate;
+            }
+        }
+        throw new IOException("MCP dashboard asset was not found: " + configuredPath);
     }
 
     private Map<String, Object> buildDashboardData(List<Map<String, Object>> allRuns) {

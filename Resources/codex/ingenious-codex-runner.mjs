@@ -2,7 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createWriteStream } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { Codex } from "@openai/codex-sdk";
+import { resolveRunPaths } from "./ingenious-codex-paths.mjs";
 
 function normalizeValue(value) {
     if (value === null || value === undefined) {
@@ -188,14 +191,21 @@ async function main() {
 
     const configText = await readFile(configPath, "utf8");
     const config = JSON.parse(configText);
-    const outputDirectory = path.resolve(config.outputDirectory ?? ".");
+    const releaseRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+    const runPaths = resolveRunPaths(config, configPath, releaseRoot);
+    const outputDirectory = runPaths.outputDirectory;
     await mkdir(outputDirectory, { recursive: true });
+    const traceRunId = config.traceRunId ?? ("codex-" + randomUUID());
+    process.env.INGENIOUS_AGENT_RUN_ID = traceRunId;
+    process.env.INGENIOUS_AGENT_TRACE_DIR = outputDirectory;
 
     const eventsPath = path.join(outputDirectory, "events.jsonl");
     const eventsStream = createWriteStream(eventsPath, { flags: "a" });
 
     const result = {
         status: "running",
+        traceRunId,
+        testarTraceFile: "testar-trace.jsonl",
         startedAt: new Date().toISOString(),
         finishedAt: "",
         threadId: "",
@@ -226,19 +236,23 @@ async function main() {
         const thread = codex.startThread({
             model: normalizeValue(config.model),
             sandboxMode: normalizeValue(config.sandboxMode),
-            workingDirectory: normalizeValue(config.workingDirectory),
+            workingDirectory: runPaths.workingDirectory,
             skipGitRepoCheck: Boolean(config.skipGitRepoCheck),
             modelReasoningEffort: normalizeValue(config.reasoningEffort),
             networkAccessEnabled: Boolean(config.networkAccessEnabled),
             approvalPolicy: normalizeValue(config.approvalPolicy),
-            additionalDirectories: Array.isArray(config.additionalDirectories)
-                    ? config.additionalDirectories
-                    : undefined,
+            additionalDirectories: runPaths.additionalDirectories,
         });
 
         const streamedTurn = await thread.runStreamed(config.prompt ?? "");
         for await (const event of streamedTurn.events) {
-            eventsStream.write(JSON.stringify(event) + "\n");
+            eventsStream.write(
+                JSON.stringify({
+                    ...event,
+                    runId: traceRunId,
+                    ingeniousReceivedAt: new Date().toISOString(),
+                }) + "\n"
+            );
             logEvent(event);
 
             if (event.type === "thread.started") {

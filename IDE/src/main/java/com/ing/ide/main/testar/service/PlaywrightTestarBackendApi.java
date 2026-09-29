@@ -14,6 +14,12 @@ import com.ing.ide.main.testar.service.session.PlaywrightSessionService;
 import com.ing.ide.main.testar.service.session.SessionService;
 import com.ing.ide.main.testar.service.state.PlaywrightStateService;
 import com.ing.ide.main.testar.service.state.StateService;
+import com.ing.ide.main.testar.trace.AgentTraceContext;
+import com.ing.ide.main.testar.trace.AgentTraceEventType;
+import com.ing.ide.main.testar.trace.AgentTraceSource;
+import com.ing.ide.main.testar.trace.AgentTraceStatus;
+import com.ing.ide.main.testar.trace.AgentTraceSupport;
+import com.ing.ide.main.testar.trace.JsonlAgentTraceRecorder;
 import com.ing.ingenious.api.contract.testar.TestarBackendApi;
 import com.ing.ingenious.api.contract.testar.TestarResult;
 import java.io.IOException;
@@ -24,8 +30,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PlaywrightTestarBackendApi implements TestarBackendApi {
+    private static final Logger LOGGER = Logger.getLogger(
+        PlaywrightTestarBackendApi.class.getName()
+    );
     private SessionContext context;
     private PersistenceService persistenceService;
     private SessionService sessionService;
@@ -33,6 +45,7 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
     private ActionService actionService;
     private AssertionService assertionService;
     private BddStepTracker bddStepTracker;
+    private AgentTraceContext traceContext;
 
     @Override
     public TestarResult startSession(
@@ -45,11 +58,13 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         try {
             Project project = new Project(projectPath);
             TESTARDataWriter dataWriter = new TESTARDataWriter(project, bddScenarioName);
+            this.traceContext = createTraceContext(project.getLocation());
             this.context = new SessionContext(dataWriter);
             this.context.setBddScenarioName(bddScenarioName != null ? bddScenarioName : "");
             this.context.setBddScenarioSource(bddScenarioSource != null ? bddScenarioSource : "");
             this.context.setRuntimeTempDir(createRuntimeTempDir());
-            this.persistenceService = new INGeniousPersistenceService(dataWriter);
+            this.context.setTraceContext(traceContext);
+            this.persistenceService = new INGeniousPersistenceService(dataWriter, traceContext);
             this.sessionService = new PlaywrightSessionService(persistenceService);
             this.stateService = new PlaywrightStateService(persistenceService);
             this.actionService = new PlaywrightActionService(persistenceService);
@@ -63,9 +78,29 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         }
 
         String initialBddStep = resolveInitialBddStep(url);
-        Feedback feedback = sessionService.loadWebURL(context, initialBddStep, url);
-        recordIfSuccess(initialBddStep, feedback);
-        return toResult(feedback, "started");
+        traceContext.append(
+            AgentTraceSource.CLI,
+            AgentTraceEventType.RUN_STARTED,
+            AgentTraceStatus.INFO,
+            "session.start",
+            "TESTAR CLI session started."
+        );
+        return traceFeedback(
+            "session.start",
+            initialBddStep,
+            AgentTraceSupport.arguments(
+                "projectPath",
+                projectPath,
+                "scenarioTitle",
+                bddScenarioName,
+                "scenarioSource",
+                bddScenarioSource,
+                "url",
+                url
+            ),
+            "started",
+            () -> sessionService.loadWebURL(context, initialBddStep, url)
+        );
     }
 
     @Override
@@ -86,12 +121,24 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
 
     @Override
     public TestarResult getCurrentUrl() {
-        return toResult(sessionService.getCurrentURL(context), "ok");
+        return traceFeedback(
+            "navigation.url",
+            "",
+            Map.of(),
+            "ok",
+            () -> sessionService.getCurrentURL(context)
+        );
     }
 
     @Override
     public TestarResult navigateBack() {
-        return toResult(sessionService.navigateBack(context), "ok");
+        return traceFeedback(
+            "navigation.back",
+            "",
+            Map.of(),
+            "ok",
+            () -> sessionService.navigateBack(context)
+        );
     }
 
     @Override
@@ -102,12 +149,26 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
 
         persistenceService.saveExecutionSteps();
         sessionService.stop(context);
+        traceContext.append(
+            AgentTraceSource.CLI,
+            AgentTraceEventType.RUN_FINISHED,
+            AgentTraceStatus.SUCCEEDED,
+            "session.stop",
+            "TESTAR CLI session stopped."
+        );
+        traceContext.close();
         return TestarResult.success("stopped", "TESTAR session stopped.", null);
     }
 
     @Override
     public TestarResult getStateInteractiveWidgets() {
-        return toResult(stateService.getStateInteractiveWidgets(context), "ok");
+        return traceFeedback(
+            "state.widgets",
+            "",
+            Map.of(),
+            "ok",
+            () -> stateService.getStateInteractiveWidgets(context)
+        );
     }
 
     @Override
@@ -123,6 +184,20 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         try {
             String imagePath = persistStateImage(feedback.toString());
             String payload = "imagePath: " + imagePath;
+            traceContext.append(
+                AgentTraceSource.TESTAR,
+                AgentTraceEventType.STATE_OBSERVED,
+                AgentTraceStatus.SUCCEEDED,
+                "",
+                "state.image",
+                "",
+                Map.of(),
+                "State image captured.",
+                Map.of(),
+                0L,
+                Map.of("imagePath", imagePath),
+                Map.of()
+            );
             return TestarResult.success("ok", "State image written.", payload);
         } catch (IllegalArgumentException | IOException exception) {
             return TestarResult.failure(
@@ -134,61 +209,85 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
 
     @Override
     public TestarResult getStateVisualText() {
-        return toResult(stateService.getStateVisualText(context), "ok");
+        return traceFeedback(
+            "state.text",
+            "",
+            Map.of(),
+            "ok",
+            () -> stateService.getStateVisualText(context)
+        );
     }
 
     @Override
     public TestarResult getStateTitle() {
-        return toResult(stateService.getStateTitle(context), "ok");
+        return traceFeedback(
+            "state.title",
+            "",
+            Map.of(),
+            "ok",
+            () -> stateService.getStateTitle(context)
+        );
     }
 
     @Override
     public TestarResult executeClickAction(String bddStep, String cssSelector) {
-        Feedback validation = validateBddStep(bddStep);
-        if (validation != null) {
-            return toResult(validation, "error");
-        }
-
-        Feedback result = actionService.executeClickAction(
-            context,
-            normalizedBddStep(bddStep),
-            cssSelector
+        return traceFeedback(
+            "action.click",
+            bddStep,
+            AgentTraceSupport.arguments("selector", cssSelector),
+            "ok",
+            () ->
+                executeValidatedAction(
+                    bddStep,
+                    () ->
+                        actionService.executeClickAction(
+                            context,
+                            normalizedBddStep(bddStep),
+                            cssSelector
+                        )
+                )
         );
-        recordIfSuccess(bddStep, result);
-        return toResult(result, "ok");
     }
 
     @Override
     public TestarResult executeCheckAction(String bddStep, String cssSelector) {
-        Feedback validation = validateBddStep(bddStep);
-        if (validation != null) {
-            return toResult(validation, "error");
-        }
-
-        Feedback result = actionService.executeCheckAction(
-            context,
-            normalizedBddStep(bddStep),
-            cssSelector
+        return traceFeedback(
+            "action.check",
+            bddStep,
+            AgentTraceSupport.arguments("selector", cssSelector),
+            "ok",
+            () ->
+                executeValidatedAction(
+                    bddStep,
+                    () ->
+                        actionService.executeCheckAction(
+                            context,
+                            normalizedBddStep(bddStep),
+                            cssSelector
+                        )
+                )
         );
-        recordIfSuccess(bddStep, result);
-        return toResult(result, "ok");
     }
 
     @Override
     public TestarResult executeFillAction(String bddStep, String cssSelector, String fillText) {
-        Feedback validation = validateBddStep(bddStep);
-        if (validation != null) {
-            return toResult(validation, "error");
-        }
-
-        Feedback result = actionService.executeFillAction(
-            context,
-            normalizedBddStep(bddStep),
-            cssSelector,
-            fillText
+        return traceFeedback(
+            "action.fill",
+            bddStep,
+            AgentTraceSupport.arguments("selector", cssSelector, "text", fillText),
+            "ok",
+            () ->
+                executeValidatedAction(
+                    bddStep,
+                    () ->
+                        actionService.executeFillAction(
+                            context,
+                            normalizedBddStep(bddStep),
+                            cssSelector,
+                            fillText
+                        )
+                )
         );
-        recordIfSuccess(bddStep, result);
-        return toResult(result, "ok");
     }
 
     @Override
@@ -197,19 +296,23 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
         String cssSelector,
         String optionValue
     ) {
-        Feedback validation = validateBddStep(bddStep);
-        if (validation != null) {
-            return toResult(validation, "error");
-        }
-
-        Feedback result = actionService.executeSelectAction(
-            context,
-            normalizedBddStep(bddStep),
-            cssSelector,
-            optionValue
+        return traceFeedback(
+            "action.select",
+            bddStep,
+            AgentTraceSupport.arguments("selector", cssSelector, "optionValue", optionValue),
+            "ok",
+            () ->
+                executeValidatedAction(
+                    bddStep,
+                    () ->
+                        actionService.executeSelectAction(
+                            context,
+                            normalizedBddStep(bddStep),
+                            cssSelector,
+                            optionValue
+                        )
+                )
         );
-        recordIfSuccess(bddStep, result);
-        return toResult(result, "ok");
     }
 
     @Override
@@ -227,34 +330,42 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
 
     @Override
     public TestarResult addAssert(String bddStep, String assertText) {
-        Feedback validation = validateBddStep(bddStep);
-        if (validation != null) {
-            return toResult(validation, "error");
-        }
-
-        Feedback result = assertionService.addStepAssert(
-            context,
-            normalizedBddStep(bddStep),
-            assertText
+        return traceFeedback(
+            "assert.add",
+            bddStep,
+            AgentTraceSupport.arguments("text", assertText),
+            "ok",
+            () ->
+                executeValidatedAction(
+                    bddStep,
+                    () ->
+                        assertionService.addStepAssert(
+                            context,
+                            normalizedBddStep(bddStep),
+                            assertText
+                        )
+                )
         );
-        recordIfSuccess(bddStep, result);
-        return toResult(result, "ok");
     }
 
     @Override
     public TestarResult addTitleAssert(String bddStep, String titlePattern) {
-        Feedback validation = validateBddStep(bddStep);
-        if (validation != null) {
-            return toResult(validation, "error");
-        }
-
-        Feedback result = assertionService.addTitleAssert(
-            context,
-            normalizedBddStep(bddStep),
-            titlePattern
+        return traceFeedback(
+            "assert.title",
+            bddStep,
+            AgentTraceSupport.arguments("titlePattern", titlePattern),
+            "ok",
+            () ->
+                executeValidatedAction(
+                    bddStep,
+                    () ->
+                        assertionService.addTitleAssert(
+                            context,
+                            normalizedBddStep(bddStep),
+                            titlePattern
+                        )
+                )
         );
-        recordIfSuccess(bddStep, result);
-        return toResult(result, "ok");
     }
 
     private BddStepTracker createBddStepTracker(String bddInstructions) {
@@ -298,6 +409,145 @@ public class PlaywrightTestarBackendApi implements TestarBackendApi {
             return null;
         }
         return bddStepTracker.validateBddStep(bddStep);
+    }
+
+    private Feedback executeValidatedAction(String bddStep, Supplier<Feedback> action) {
+        Feedback validation = validateBddStep(bddStep);
+        if (validation != null) {
+            return validation;
+        }
+        Feedback feedback = action.get();
+        recordIfSuccess(bddStep, feedback);
+        return feedback;
+    }
+
+    private TestarResult traceFeedback(
+        String operation,
+        String bddStep,
+        Map<String, Object> arguments,
+        String successStatus,
+        Supplier<Feedback> action
+    ) {
+        if (traceContext == null) {
+            return toResult(action.get(), successStatus);
+        }
+
+        String operationId = UUID.randomUUID().toString();
+        traceContext.beginOperation(operationId);
+        if ("action.fill".equals(operation)) {
+            Object selector = arguments.get("selector");
+            if (selector != null && selector.toString().toLowerCase().contains("password")) {
+                arguments = new LinkedHashMap<>(arguments);
+                arguments.put("text", "[REDACTED]");
+            }
+        }
+        traceContext.append(
+            AgentTraceSource.CLI,
+            AgentTraceEventType.COMMAND_REQUESTED,
+            AgentTraceStatus.STARTED,
+            bddStep,
+            operation,
+            operationId,
+            arguments,
+            "TESTAR CLI operation requested.",
+            Map.of(),
+            0L,
+            Map.of(),
+            Map.of()
+        );
+
+        long startNanos = System.nanoTime();
+        try {
+            Feedback feedback = action.get();
+            AgentTraceSupport.appendFeedback(
+                traceContext,
+                AgentTraceSource.TESTAR,
+                bddStep,
+                operation,
+                feedback,
+                (System.nanoTime() - startNanos) / 1_000_000L
+            );
+            traceContext.append(
+                AgentTraceSource.TESTAR,
+                AgentTraceEventType.OPERATION_COMPLETED,
+                feedback != null && feedback.isIssue()
+                    ? AgentTraceStatus.FAILED
+                    : AgentTraceStatus.SUCCEEDED,
+                bddStep,
+                operation,
+                operationId,
+                Map.of(),
+                feedback != null ? feedback.toString() : "No feedback returned.",
+                Map.of(),
+                (System.nanoTime() - startNanos) / 1_000_000L,
+                Map.of(),
+                Map.of()
+            );
+            return toResult(feedback, successStatus);
+        } catch (RuntimeException exception) {
+            traceContext.append(
+                AgentTraceSource.TESTAR,
+                AgentTraceEventType.RUN_ERROR,
+                AgentTraceStatus.FAILED,
+                bddStep,
+                operation,
+                operationId,
+                Map.of(),
+                exception.getMessage() != null
+                    ? exception.getMessage()
+                    : exception.getClass().getName(),
+                Map.of(),
+                (System.nanoTime() - startNanos) / 1_000_000L,
+                Map.of(),
+                Map.of()
+            );
+            throw exception;
+        } finally {
+            traceContext.endOperation();
+        }
+    }
+
+    private AgentTraceContext createTraceContext(String projectLocation) {
+        String runId = configuredTraceValue(
+            "ingenious.testar.traceRunId",
+            "INGENIOUS_AGENT_RUN_ID"
+        );
+        if (runId == null || runId.isBlank()) {
+            runId = "cli-" + UUID.randomUUID();
+        }
+
+        Path traceDirectory;
+        String configuredTraceDirectory = configuredTraceValue(
+            "ingenious.testar.traceDirectory",
+            "INGENIOUS_AGENT_TRACE_DIR"
+        );
+        String traceFileName = configuredTraceDirectory != null &&
+            !configuredTraceDirectory.isBlank()
+            ? "testar-trace.jsonl"
+            : "trace.jsonl";
+        if (configuredTraceDirectory != null && !configuredTraceDirectory.isBlank()) {
+            traceDirectory = Path.of(configuredTraceDirectory);
+        } else {
+            traceDirectory = Path.of(projectLocation, "Results", "CLI", "traces", runId);
+        }
+
+        try {
+            return new AgentTraceContext(
+                runId,
+                new JsonlAgentTraceRecorder(traceDirectory.resolve(traceFileName))
+            );
+        } catch (IOException | RuntimeException exception) {
+            LOGGER.log(Level.WARNING, "Could not initialize TESTAR trace recorder", exception);
+            return new AgentTraceContext(runId, null);
+        }
+    }
+
+    private String configuredTraceValue(String propertyName, String environmentName) {
+        String value = System.getProperty(propertyName);
+        if (value == null || value.isBlank()) {
+            value = System.getenv(environmentName);
+        }
+        return value;
     }
 
     private String normalizedBddStep(String bddStep) {

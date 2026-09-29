@@ -52,6 +52,8 @@ public class LlmRunMetrics {
     private List<String> knownBddSteps = Collections.emptyList();
     private List<String> executedBddSteps = Collections.emptyList();
     private String latestExecutedBddStep = "";
+    private String traceRunId = "";
+    private String tracePath = "";
 
     public LlmRunMetrics(
         String runName,
@@ -77,6 +79,19 @@ public class LlmRunMetrics {
 
     public void recordPromptLatency(long latencyMs) {
         latencyTimelineMs.add(latencyMs);
+    }
+
+    public void setTraceReference(String traceRunId, String tracePath) {
+        this.traceRunId = traceRunId != null ? traceRunId : "";
+        this.tracePath = tracePath != null ? tracePath : "";
+    }
+
+    public String getTraceRunId() {
+        return traceRunId;
+    }
+
+    public String getTracePath() {
+        return tracePath;
     }
 
     public void addTokens(int tokenCount) {

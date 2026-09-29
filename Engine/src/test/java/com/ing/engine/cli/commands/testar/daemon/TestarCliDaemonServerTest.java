@@ -28,6 +28,20 @@ public class TestarCliDaemonServerTest {
     }
 
     @Test
+    public void testRequestCarriesOptionalAgentTraceContext() {
+        TestarCliRequest request = TestarCliRequest.of(
+            "session.start",
+            List.of("Projects\\Parabank"),
+            "codex-run-1",
+            "C:\\runs\\codex-run-1"
+        );
+
+        assertThat(request.getTraceRunId()).isEqualTo("codex-run-1");
+        assertThat(request.getTraceDirectory()).isEqualTo("C:\\runs\\codex-run-1");
+        assertThat(TestarCliRequest.of("session.status", List.of()).getTraceRunId()).isEmpty();
+    }
+
+    @Test
     public void testHandleSessionStopMarksDaemonForShutdown() throws Exception {
         // Active-session stop: backend exists, so stop must invoke the backend and mark daemon shutdown.
         TestarCliDaemonServer server = new TestarCliDaemonServer();

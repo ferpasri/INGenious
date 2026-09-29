@@ -43,9 +43,18 @@ public class TestarCommand implements Callable<Integer> {
         private final TestarCliDaemonClient client = new TestarCliDaemonClient();
 
         int send(INGeniousCLI cli, String command, String... arguments) {
+            String traceRunId = System.getenv("INGENIOUS_AGENT_RUN_ID");
+            String traceDirectory = System.getenv("INGENIOUS_AGENT_TRACE_DIR");
             return TestarCliSupport.printDaemonResponse(
                 cli,
-                client.send(TestarCliRequest.of(command, Arrays.asList(arguments)))
+                client.send(
+                    TestarCliRequest.of(
+                        command,
+                        Arrays.asList(arguments),
+                        traceRunId,
+                        traceDirectory
+                    )
+                )
             );
         }
     }

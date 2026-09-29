@@ -3,15 +3,19 @@ package com.ing.ide.main.testar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ing.datalib.component.EnvTestData;
 import com.ing.datalib.component.Project;
 import com.ing.datalib.component.Scenario;
 import com.ing.datalib.component.TestCase;
 import com.ing.datalib.component.TestData;
 import com.ing.datalib.component.TestStep;
+import com.ing.datalib.or.ObjectRepository;
 import com.ing.datalib.or.common.ObjectGroup;
 import com.ing.datalib.or.web.WebORObject;
 import com.ing.datalib.or.web.WebORPage;
@@ -20,6 +24,12 @@ import com.ing.datalib.testdata.model.TestDataModel;
 import com.ing.ide.main.testar.playwright.system.PlaywrightState;
 import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
+import com.ing.ide.main.testar.service.persistence.INGeniousPersistenceService;
+import com.ing.ide.main.testar.trace.AgentTraceContext;
+import com.ing.ide.main.testar.trace.AgentTraceSupport;
+import com.ing.ide.main.testar.trace.ArtifactPersistenceResult;
+import com.ing.ide.main.testar.trace.ArtifactReference;
+import com.ing.ide.main.testar.trace.JsonlAgentTraceRecorder;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import java.io.File;
@@ -36,6 +46,7 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 public class TESTARDataWriterTest {
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private Path tempDir;
 
     @AfterMethod
@@ -333,7 +344,11 @@ public class TESTARDataWriterTest {
             page
         );
 
-        writer.addAssertTestStep("Given the page is open", state, "Customer Login");
+        ArtifactPersistenceResult persistenceResult = writer.addAssertTestStep(
+            "Given the page is open",
+            state,
+            "Customer Login"
+        );
 
         WebORPage webORPage = (WebORPage) widgetObject.getParent().getParent();
 
@@ -346,6 +361,16 @@ public class TESTARDataWriterTest {
                     .getAttributeByName("Text")
             )
             .isEqualTo("Customer Login");
+        assertThat(persistenceResult.getArtifacts())
+            .extracting(ArtifactReference::getKind)
+            .containsExactly("OBJECT_REPOSITORY_ASSERTION", "LOW_LEVEL_BDD_STEP");
+        assertThat(persistenceResult.getArtifacts().get(0).getDisposition()).isEqualTo("created");
+        assertThat(persistenceResult.getArtifacts().get(0).getObjectName())
+            .isEqualTo("assertCustomerL[text]");
+        assertThat(persistenceResult.getArtifacts().get(1).getAction())
+            .isEqualTo("assertElementIsVisible");
+        assertThat(persistenceResult.getArtifacts().get(1).getReusableTestCaseName())
+            .isEqualTo("Given the page is open");
 
         Path pageFile = tempDir
             .resolve("ObjectRepository")
@@ -403,18 +428,81 @@ public class TESTARDataWriterTest {
     }
 
     @Test
+    public void testArtifactTraceIncludesDataValueButRedactsPassword() throws IOException {
+        InMemoryTestDataModel testDataModel = new InMemoryTestDataModel();
+        TESTARDataWriter writer = createWriter(testDataModel);
+        Path traceFile = tempDir.resolve("trace.jsonl");
+        AgentTraceContext traceContext = new AgentTraceContext(
+            "data-run",
+            new JsonlAgentTraceRecorder(traceFile)
+        );
+
+        ArtifactPersistenceResult amount = new ArtifactPersistenceResult();
+        amount.add(
+            writer.addAbstractTestStep(
+                "When the user fills the loan amount",
+                "amount[input]",
+                "Fill amount",
+                "Fill",
+                "@999999",
+                "Loan Request"
+            )
+        );
+        AgentTraceSupport.appendArtifacts(
+            traceContext,
+            "When the user fills the loan amount",
+            "Fill",
+            amount
+        );
+
+        ArtifactPersistenceResult password = new ArtifactPersistenceResult();
+        password.add(
+            writer.addConcreteTestStep("password[input]", "Fill password", "Fill", "@demo", "Login")
+        );
+        AgentTraceSupport.appendArtifacts(traceContext, "", "Fill", password);
+        traceContext.close();
+
+        List<String> events = Files.readAllLines(traceFile);
+        JsonNode amountArtifact = JSON_MAPPER.readTree(events.get(0)).path("artifacts");
+        JsonNode passwordArtifact = JSON_MAPPER.readTree(events.get(1)).path("artifacts");
+        assertThat(amountArtifact.path("testDataColumn").asText()).isEqualTo("amount[input]_Fill");
+        assertThat(amountArtifact.path("testDataValue").asText()).isEqualTo("999999");
+        assertThat(passwordArtifact.path("testDataValue").asText()).isEqualTo("[REDACTED]");
+        assertThat(Files.readString(traceFile)).doesNotContain("demo");
+        Record record = testDataModel.getRecords().get(0);
+        assertThat(record.get(testDataModel.getColumnIndex("password[input]_Fill")))
+            .isEqualTo("demo");
+    }
+
+    @Test
     public void testTitleAssertCreatesBrowserActionDataWithoutObjectRepositoryElement()
         throws IOException {
         InMemoryTestDataModel testDataModel = new InMemoryTestDataModel();
         TESTARDataWriter writer = createWriter(testDataModel);
 
-        writer.addTitleAssertTestStep("Then the welcome page is shown", "ParaBank.*Welcome");
+        ArtifactPersistenceResult persistenceResult = writer.addTitleAssertTestStep(
+            "Then the welcome page is shown",
+            "ParaBank.*Welcome"
+        );
 
         assertThat(testDataModel.getRecords()).hasSize(1);
         Record record = testDataModel.getRecords().get(0);
         assertThat(record.get(testDataModel.getColumnIndex("Browser_assertPageTitleMatches")))
             .isEqualTo("ParaBank.*Welcome");
         assertThat(tempDir.resolve("ObjectRepository").resolve("Web")).doesNotExist();
+        assertThat(persistenceResult.getArtifacts()).hasSize(1);
+        assertThat(persistenceResult.getArtifacts().get(0).getKind())
+            .isEqualTo("LOW_LEVEL_BDD_STEP");
+        assertThat(persistenceResult.getArtifacts().get(0).getAction())
+            .isEqualTo("assertPageTitleMatches");
+        assertThat(persistenceResult.getArtifacts().get(0).getObjectName()).isEqualTo("Browser");
+        assertThat(persistenceResult.getArtifacts().get(0).getTestDataSheet())
+            .isEqualTo(writer.getRunName());
+        assertThat(persistenceResult.getArtifacts().get(0).getTestDataRow()).isEqualTo(1);
+        assertThat(persistenceResult.getArtifacts().get(0).getTestDataColumn())
+            .isEqualTo("Browser_assertPageTitleMatches");
+        assertThat(persistenceResult.getArtifacts().get(0).getTestDataValue())
+            .isEqualTo("ParaBank.*Welcome");
     }
 
     @Test
@@ -436,6 +524,88 @@ public class TESTARDataWriterTest {
                 "Loan Request A",
                 "Loan Request B"
             );
+    }
+
+    @Test
+    public void testProjectSavePreservesAssertionInObjectRepository() throws IOException {
+        TESTARDataWriter writer = createWriter();
+        Page page = mockPage("Loan Request");
+        PlaywrightState state = mockState(page);
+        writer.addWidgetObject(
+            mockWidget(
+                "Apply Now",
+                "button",
+                "",
+                "",
+                "button",
+                "button",
+                "",
+                "#apply",
+                "",
+                "",
+                "",
+                ""
+            ),
+            page
+        );
+
+        writer.addAssertTestStep("Then the loan is denied", state, "Denied");
+        writer.saveExecutionSteps();
+
+        Path pageFile = tempDir.resolve("ObjectRepository/Web/Loan Request.yaml");
+        assertThat(Files.readString(pageFile))
+            .contains(
+                "ApplyNow[button]:",
+                "css: \"#apply\"",
+                "assertDenied[text]:",
+                "text: Denied"
+            );
+    }
+
+    @Test
+    public void testStateObservationTracesCreatedAndReusedObjects() throws IOException {
+        TESTARDataWriter writer = createWriter();
+        Path traceFile = tempDir.resolve("trace.jsonl");
+        AgentTraceContext traceContext = new AgentTraceContext(
+            "observation-run",
+            new JsonlAgentTraceRecorder(traceFile)
+        );
+        INGeniousPersistenceService persistenceService = new INGeniousPersistenceService(
+            writer,
+            traceContext
+        );
+        Page page = mockPage("Loan Request");
+        PlaywrightWidget widget = mockWidget(
+            "Apply Now",
+            "button",
+            "",
+            "",
+            "button",
+            "button",
+            "",
+            "#apply",
+            "",
+            "",
+            "",
+            ""
+        );
+
+        persistenceService.persistWidgetObject(widget, page);
+        persistenceService.persistWidgetObject(widget, page);
+        traceContext.close();
+
+        List<String> events = Files.readAllLines(traceFile);
+        assertThat(events).hasSize(2);
+        JsonNode created = JSON_MAPPER.readTree(events.get(0));
+        JsonNode reused = JSON_MAPPER.readTree(events.get(1));
+        assertThat(created.path("type").asText()).isEqualTo("ARTIFACT_CREATED");
+        assertThat(created.path("artifacts").path("kind").asText())
+            .isEqualTo("OBJECT_REPOSITORY_OBJECT");
+        assertThat(created.path("artifacts").path("objectName").asText())
+            .isEqualTo("ApplyNow[button]");
+        assertThat(reused.path("type").asText()).isEqualTo("ARTIFACT_REUSED");
+        assertThat(reused.path("artifacts").path("objectName").asText())
+            .isEqualTo("ApplyNow[button]");
     }
 
     private TESTARDataWriter createWriter() throws IOException {
@@ -478,6 +648,17 @@ public class TESTARDataWriterTest {
                     return testCase;
                 }
             );
+
+        ObjectRepository objectRepository = new ObjectRepository(project);
+        when(project.getObjectRepository()).thenReturn(objectRepository);
+        doAnswer(
+                invocation -> {
+                    objectRepository.save();
+                    return null;
+                }
+            )
+            .when(project)
+            .save();
 
         return new TESTARDataWriter(project, "Loan Scenario");
     }

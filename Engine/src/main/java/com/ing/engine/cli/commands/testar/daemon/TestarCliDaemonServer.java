@@ -56,8 +56,12 @@ public final class TestarCliDaemonServer {
             for (int index = 0; index < argumentCount; index++) {
                 arguments.add(input.readUTF());
             }
+            String traceRunId = input.readUTF();
+            String traceDirectory = input.readUTF();
 
-            TestarCliResponse response = handle(TestarCliRequest.of(command, arguments));
+            TestarCliResponse response = handle(
+                TestarCliRequest.of(command, arguments, traceRunId, traceDirectory)
+            );
             output.writeInt(response.getExitCode());
             output.writeInt(response.getLines().size());
             for (String line : response.getLines()) {
@@ -215,18 +219,39 @@ public final class TestarCliDaemonServer {
             );
         }
 
-        return withDaemonMetadata(
-            wrapResult(
-                backend.startSession(
-                    projectPath,
-                    bddScenarioName,
-                    bddInstructions,
-                    bddScenarioSource,
-                    url
-                )
-            ),
-            true
-        );
+        String previousRunId = System.getProperty("ingenious.testar.traceRunId");
+        String previousTraceDirectory = System.getProperty("ingenious.testar.traceDirectory");
+        try {
+            setOrClearProperty("ingenious.testar.traceRunId", request.getTraceRunId());
+            setOrClearProperty("ingenious.testar.traceDirectory", request.getTraceDirectory());
+            return withDaemonMetadata(
+                wrapResult(
+                    backend.startSession(
+                        projectPath,
+                        bddScenarioName,
+                        bddInstructions,
+                        bddScenarioSource,
+                        url
+                    )
+                ),
+                true
+            );
+        } finally {
+            restoreProperty("ingenious.testar.traceRunId", previousRunId);
+            restoreProperty("ingenious.testar.traceDirectory", previousTraceDirectory);
+        }
+    }
+
+    private void setOrClearProperty(String key, String value) {
+        if (value == null || value.isBlank()) {
+            System.clearProperty(key);
+        } else {
+            System.setProperty(key, value);
+        }
+    }
+
+    private void restoreProperty(String key, String value) {
+        setOrClearProperty(key, value);
     }
 
     private TestarCliResponse sessionStatus() {

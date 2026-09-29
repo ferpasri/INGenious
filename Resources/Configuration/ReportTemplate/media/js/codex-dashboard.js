@@ -5,7 +5,7 @@
  * written into codex_metrics.js by the Java dashboard writer.
  */
 (function () {
-    const data = window.CODEX_METRICS_DATA || { summary: {}, groups: [], runs: [] };
+    const data = window.CODEX_METRICS_DATA || { summary: {}, groups: [], runs: [], incompleteRuns: [] };
     const app = document.getElementById("app");
     const state = {
         selectedGroupKey: "",
@@ -159,6 +159,7 @@
         <div class="page">
           ${renderOverview()}
           ${renderGroupRunSection()}
+          ${renderIncompleteRuns()}
           ${renderBenchmarkComparison()}
         </div>`;
 
@@ -168,7 +169,9 @@
     function renderOverview() {
         const group = selectedGroup();
         if (!group) {
-            return "<div class=\"empty\">No Codex runs available.</div>";
+            return safeArray(data.incompleteRuns).length
+                ? "<div class=\"empty\">No completed Codex runs are available yet.</div>"
+                : "<div class=\"empty\">No Codex runs available.</div>";
         }
 
         return `
@@ -179,6 +182,28 @@
           <div class="card ${Number(group.avgFailedCommandCount || 0) > 0 ? "bad" : "ok"}"><div class="label">Average Command Failures</div><div class="value">${decimalFmt(group.avgFailedCommandCount)}</div><div class="desc">Mean failed shell command count per run.</div></div>
           <div class="card"><div class="label">Runs in Group</div><div class="value">${intFmt(group.totalRuns)}</div><div class="desc">${intFmt(group.successfulRuns)} successful runs inside the selected configuration group.</div></div>
           <div class="card"><div class="label">Average Completed Items</div><div class="value">${decimalFmt(group.avgCompletedItems)}</div><div class="desc">Mean number of completed Codex items per run.</div></div>
+        </div>`;
+    }
+
+    function renderIncompleteRuns() {
+        const runs = safeArray(data.incompleteRuns);
+        if (!runs.length) {
+            return "";
+        }
+
+        return `
+        <div class="section">
+          <div class="section-header"><div class="section-title">Incomplete Runs</div><div class="section-meta">These runs are excluded from benchmark averages because no complete result was recorded.</div></div>
+          <div class="section-body">
+            <table><thead><tr><th>Run</th><th>Status</th><th>Model</th><th>Started</th><th>Trace</th><th>Note</th></tr></thead><tbody>${runs.map(run => `<tr>
+              <td>${esc(run.runName)}</td>
+              <td><span class="pill warn">${esc(run.status)}</span></td>
+              <td>${esc(run.modelName || "Unknown")}${run.reasoningEffort ? ` / ${esc(run.reasoningEffort)}` : ""}</td>
+              <td class="small">${esc(run.startedAt || "Unknown")}</td>
+              <td>${run.tracePath ? `<a href="${esc(run.tracePath)}" target="_blank" rel="noreferrer">Inspect Trace</a>` : "Unavailable"}</td>
+              <td class="small">${esc(run.traceRenderError || run.recoveryNote || run.recordedStatus || "Partial run; metrics unavailable.")}</td>
+            </tr>`).join("")}</tbody></table>
+          </div>
         </div>`;
     }
 
@@ -222,7 +247,7 @@
                 </div>
                 <div class="chart-box" style="margin-top:14px">
                   <h3>Run Details</h3>
-                  ${runs.length ? `<table><thead><tr><th>Run</th><th>Status</th><th>Duration</th><th>Total Tokens</th><th>Completed Items</th><th>Cmd Failures</th><th>Started</th><th>Final Response</th></tr></thead><tbody>${runs.map(run => `<tr>
+                  ${runs.length ? `<table><thead><tr><th>Run</th><th>Status</th><th>Duration</th><th>Total Tokens</th><th>Completed Items</th><th>Cmd Failures</th><th>Started</th><th>Final Response</th><th>Trace</th></tr></thead><tbody>${runs.map(run => `<tr>
                     <td>${esc(run.runName)}</td>
                     <td><span class="pill ${isSuccess(run) ? "ok" : "bad"}">${esc(run.status)}</span></td>
                     <td class="mono">${durationFmt(run.durationMs)}</td>
@@ -231,6 +256,7 @@
                     <td style="color:${Number(run.failedCommandCount || 0) > 0 ? "#a43641" : "#257c47"};font-weight:700">${intFmt(run.failedCommandCount)}</td>
                     <td class="small">${esc(run.startedAt)}</td>
                     <td class="small">${finalResponseSummary(run)}</td>
+                    <td>${run.tracePath ? `<a href="${esc(run.tracePath)}" target="_blank" rel="noreferrer">Inspect Trace</a>` : "Unavailable"}</td>
                   </tr>`).join("")}</tbody></table>` : `<div class="empty">No runs available in this configuration group.</div>`}
                 </div>
               </div>

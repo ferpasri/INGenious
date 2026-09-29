@@ -303,6 +303,11 @@ th {
     color: #a43641;
 }
 
+.pill.warn {
+    background: #fff0d2;
+    color: #805400;
+}
+
 .mono {
     font-family: Consolas, 'Courier New', monospace;
 }

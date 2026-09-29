@@ -19,10 +19,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CodexAgentRunner {
+    private static final Logger LOGGER = Logger.getLogger(CodexAgentRunner.class.getName());
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private static final DateTimeFormatter RUN_TIMESTAMP = DateTimeFormatter
         .ofPattern("yyyy-MM-dd_HH-mm-ss")
@@ -56,6 +60,10 @@ public class CodexAgentRunner {
         Path resultFile = runDirectory.resolve("result.json");
 
         Map<String, Object> request = new LinkedHashMap<>();
+        String traceRunId = "codex-" + UUID.randomUUID();
+        CodexRunManifest manifest = createRunManifest(project, runDirectory, traceRunId, settings);
+        CodexRunManifest.write(runDirectory, manifest);
+        request.put("traceRunId", traceRunId);
         request.put(
             "apiKeyEnvVarName",
             valueOrDefault(settings.apiKeyEnvVarName, "OPENAI_API_KEY")
@@ -73,16 +81,13 @@ public class CodexAgentRunner {
             "skipGitRepoCheck",
             settings.skipGitRepoCheck == null || settings.skipGitRepoCheck
         );
-        request.put("workingDirectory", releaseRoot.toAbsolutePath().normalize().toString());
-        request.put(
-            "additionalDirectories",
-            additionalDirectories(releaseRoot, project.getLocation())
-        );
+        request.put("workingDirectory", "@release");
+        request.put("additionalDirectories", List.of("@release", "@project"));
         request.put(
             "prompt",
             buildExecutionPrompt(valueOrEmpty(settings.promptText), project.getLocation())
         );
-        request.put("outputDirectory", runDirectory.toAbsolutePath().toString());
+        request.put("outputDirectory", "@run");
         JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValue(requestFile.toFile(), request);
 
         ProcessBuilder processBuilder = new ProcessBuilder(
@@ -92,17 +97,68 @@ public class CodexAgentRunner {
         );
         processBuilder.directory(releaseRoot.toFile());
 
-        Process process = processBuilder.start();
+        Process process;
+        try {
+            process = processBuilder.start();
+        } catch (IOException exception) {
+            finishManifest(runDirectory, manifest, "failed");
+            throw exception;
+        }
+        manifest.setStatus("running");
+        manifest.setProcessId(process.pid());
+        manifest.setProcessStartedAt(
+            process.info().startInstant().map(Object::toString).orElse("")
+        );
+        try {
+            CodexRunManifest.write(runDirectory, manifest);
+        } catch (IOException exception) {
+            process.destroyForcibly();
+            finishManifest(runDirectory, manifest, "failed");
+            throw exception;
+        }
         RunningCodexRun run = new RunningCodexRun(
             process,
             runDirectory,
             stdoutFile,
             stderrFile,
             resultFile,
+            manifest,
             logListener
         );
         run.startStreaming();
         return run;
+    }
+
+    private CodexRunManifest createRunManifest(
+        Project project,
+        Path runDirectory,
+        String traceRunId,
+        CodexAgentSettings settings
+    ) {
+        CodexRunManifest manifest = new CodexRunManifest();
+        manifest.setRunId(traceRunId);
+        manifest.setRunName(runDirectory.getFileName().toString());
+        manifest.setStatus("starting");
+        manifest.setStartedAt(OffsetDateTime.now().toString());
+        manifest.setProjectPath("@project");
+        manifest.setTraceRunId(traceRunId);
+        manifest.setModel(valueOrDefault(settings.model, "gpt-6-luna"));
+        manifest.setReasoningEffort(valueOrDefault(settings.reasoningEffort, "low"));
+        manifest.setProcessId(ProcessHandle.current().pid());
+        manifest.setProcessStartedAt(
+            ProcessHandle.current().info().startInstant().map(Object::toString).orElse("")
+        );
+        return manifest;
+    }
+
+    private void finishManifest(Path runDirectory, CodexRunManifest manifest, String status) {
+        manifest.setStatus(status);
+        manifest.setFinishedAt(OffsetDateTime.now().toString());
+        try {
+            CodexRunManifest.write(runDirectory, manifest);
+        } catch (IOException exception) {
+            LOGGER.log(Level.WARNING, "Could not update Codex run manifest", exception);
+        }
     }
 
     public interface LogListener {
@@ -117,6 +173,7 @@ public class CodexAgentRunner {
         private final Path stdoutFile;
         private final Path stderrFile;
         private final Path resultFile;
+        private final CodexRunManifest manifest;
         private final LogListener logListener;
         private final AtomicBoolean stopRequested = new AtomicBoolean(false);
         private final CountDownLatch streamLatch = new CountDownLatch(2);
@@ -127,6 +184,7 @@ public class CodexAgentRunner {
             Path stdoutFile,
             Path stderrFile,
             Path resultFile,
+            CodexRunManifest manifest,
             LogListener logListener
         ) {
             this.process = process;
@@ -134,6 +192,7 @@ public class CodexAgentRunner {
             this.stdoutFile = stdoutFile;
             this.stderrFile = stderrFile;
             this.resultFile = resultFile;
+            this.manifest = manifest;
             this.logListener = logListener;
         }
 
@@ -162,6 +221,7 @@ public class CodexAgentRunner {
             streamLatch.await();
 
             if (stopRequested.get() && !Files.exists(resultFile)) {
+                finishManifest(runDirectory, manifest, "cancelled");
                 return new CodexRunResult(
                     false,
                     "cancelled",
@@ -175,6 +235,7 @@ public class CodexAgentRunner {
 
             if (!Files.exists(resultFile)) {
                 String stderr = Files.exists(stderrFile) ? Files.readString(stderrFile) : "";
+                finishManifest(runDirectory, manifest, "failed");
                 throw new IllegalStateException(
                     "Codex runner did not produce result.json. " + stderr.trim()
                 );
@@ -193,6 +254,7 @@ public class CodexAgentRunner {
             }
 
             boolean success = exitCode == 0 && "completed".equalsIgnoreCase(status);
+            finishManifest(runDirectory, manifest, success ? "completed" : "failed");
             if (!success && errorMessage.isBlank()) {
                 String stderr = Files.exists(stderrFile) ? Files.readString(stderrFile) : "";
                 errorMessage = stderr.isBlank() ? "Codex agent execution failed." : stderr.trim();
@@ -313,19 +375,6 @@ public class CodexAgentRunner {
         );
         Files.createDirectories(runDirectory);
         return runDirectory;
-    }
-
-    private List<String> additionalDirectories(Path releaseRoot, String projectLocation) {
-        List<String> directories = new ArrayList<>();
-        String releasePath = releaseRoot.toAbsolutePath().normalize().toString();
-        directories.add(releasePath);
-
-        Path projectPath = Paths.get(projectLocation).toAbsolutePath().normalize();
-        if (!projectPath.toString().equalsIgnoreCase(releasePath)) {
-            directories.add(projectPath.toString());
-        }
-
-        return directories;
     }
 
     private String buildExecutionPrompt(String userPrompt, String projectLocation) {

@@ -40,7 +40,14 @@ public class TestarCliDaemonServerIntegrationTest {
 
         waitUntilReachable();
 
-        TestarCliResponse response = sendRequest(TestarCliRequest.of("session.stop", List.of()));
+        TestarCliResponse response = sendRequest(
+            TestarCliRequest.of(
+                "session.stop",
+                List.of(),
+                "codex-test-run",
+                "C:\\runs\\codex-test-run"
+            )
+        );
 
         assertThat(response.getExitCode()).isZero();
         assertThat(response.getLines()).contains("status=stopped");
@@ -96,6 +103,8 @@ public class TestarCliDaemonServerIntegrationTest {
                 for (String argument : request.getArguments()) {
                     output.writeUTF(argument != null ? argument : "");
                 }
+                output.writeUTF(request.getTraceRunId());
+                output.writeUTF(request.getTraceDirectory());
                 output.flush();
 
                 int exitCode = input.readInt();

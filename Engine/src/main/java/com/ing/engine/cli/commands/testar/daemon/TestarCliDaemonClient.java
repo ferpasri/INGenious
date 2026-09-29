@@ -111,6 +111,8 @@ public final class TestarCliDaemonClient {
                 for (String argument : request.getArguments()) {
                     output.writeUTF(argument != null ? argument : "");
                 }
+                output.writeUTF(request.getTraceRunId());
+                output.writeUTF(request.getTraceDirectory());
                 output.flush();
 
                 int exitCode = input.readInt();

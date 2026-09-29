@@ -5,6 +5,7 @@ import com.ing.ide.main.mainui.AppMainFrame;
 import com.ing.ide.main.mainui.components.testdesign.tree.model.ReusableTreeModel;
 import com.ing.ide.main.testar.mcp.LlmMcpAgent;
 import com.ing.ide.main.testar.mcp.McpAgentSettings;
+import com.ing.ide.main.testar.mcp.metrics.LlmMetricsWriter;
 import com.ing.ide.main.testar.mcp.provider.LlmProviderFactory;
 import com.ing.ide.settings.IconSettings;
 import com.ing.ide.util.Notification;
@@ -470,9 +471,8 @@ public class MCPAgentPanel {
                 return;
             }
 
-            File dashboardFile = Paths
-                .get(sMainFrame.getProject().getLocation(), "Results", "MCP", "dashboard.html")
-                .toFile();
+            Path metricsRoot = Paths.get(sMainFrame.getProject().getLocation(), "Results", "MCP");
+            File dashboardFile = metricsRoot.resolve("dashboard.html").toFile();
 
             if (!dashboardFile.exists()) {
                 Notification.show(
@@ -480,6 +480,8 @@ public class MCPAgentPanel {
                 );
                 return;
             }
+
+            new LlmMetricsWriter().refreshDashboard(metricsRoot);
 
             if (!Desktop.isDesktopSupported()) {
                 Notification.show("Desktop integration is not supported in this environment.");

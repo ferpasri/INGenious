@@ -3,6 +3,8 @@ package com.ing.ide.main.testar.codex.metrics;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ing.engine.constants.AppResourcePath;
+import com.ing.ide.main.testar.codex.CodexRunManifest;
+import com.ing.ide.main.testar.trace.AgentTraceViewerWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,20 +18,28 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 public class CodexMetricsDashboardWriter {
+    private static final Logger LOGGER = Logger.getLogger(
+        CodexMetricsDashboardWriter.class.getName()
+    );
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<Map<String, Object>>() {};
     private static final String DASHBOARD_TEMPLATE_HTML = "codex-dashboard.html";
     private static final String DASHBOARD_CSS = "codex-dashboard.css";
     private static final String DASHBOARD_JS = "codex-dashboard.js";
+    private final AgentTraceViewerWriter traceViewerWriter = new AgentTraceViewerWriter();
 
     public void writeDashboard(Path codexRoot) throws IOException {
         Files.createDirectories(codexRoot);
 
-        List<Map<String, Object>> runs = loadRuns(codexRoot.resolve("runs"));
-        Map<String, Object> dashboardData = buildDashboardData(runs);
+        List<Map<String, Object>> runs = new ArrayList<>();
+        List<Map<String, Object>> incompleteRuns = new ArrayList<>();
+        loadRuns(codexRoot.resolve("runs"), runs, incompleteRuns);
+        Map<String, Object> dashboardData = buildDashboardData(runs, incompleteRuns);
         String jsPayload =
             "window.CODEX_METRICS_DATA = " +
             JSON_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(dashboardData) +
@@ -39,10 +49,14 @@ public class CodexMetricsDashboardWriter {
         copyDashboardAssets(codexRoot);
     }
 
-    private List<Map<String, Object>> loadRuns(Path runsDir) throws IOException {
-        List<Map<String, Object>> runs = new ArrayList<>();
+    private void loadRuns(
+        Path runsDir,
+        List<Map<String, Object>> runs,
+        List<Map<String, Object>> incompleteRuns
+    )
+        throws IOException {
         if (!Files.isDirectory(runsDir)) {
-            return runs;
+            return;
         }
 
         try (Stream<Path> paths = Files.list(runsDir)) {
@@ -51,29 +65,186 @@ public class CodexMetricsDashboardWriter {
                 .sorted()
                 .forEach(
                     runDir -> {
+                        Map<String, Object> result;
                         try {
-                            Map<String, Object> result = readJsonMap(runDir.resolve("result.json"));
-                            Map<String, Object> request = readJsonMap(
-                                runDir.resolve("request.json")
-                            );
-                            if (result.isEmpty()) {
-                                return;
-                            }
-                            runs.add(normalizeRun(runDir, result, request));
+                            result = readJsonMap(runDir.resolve("result.json"));
                         } catch (IOException exception) {
-                            throw new RuntimeException(exception);
+                            result = new LinkedHashMap<>();
                         }
+                        Map<String, Object> request;
+                        try {
+                            request = readJsonMap(runDir.resolve("request.json"));
+                        } catch (IOException exception) {
+                            request = new LinkedHashMap<>();
+                        }
+                        try {
+                            makeRunMetadataPortable(runDir, result, request);
+                        } catch (IOException exception) {
+                            LOGGER.log(
+                                Level.WARNING,
+                                "Could not update Codex run paths",
+                                exception
+                            );
+                        }
+                        if (result.isEmpty()) {
+                            if (hasRunEvidence(runDir)) {
+                                incompleteRuns.add(loadIncompleteRun(runDir, request));
+                            }
+                            return;
+                        }
+                        Map<String, Object> normalized = normalizeRun(runDir, result, request);
+                        if (
+                            Files.isRegularFile(runDir.resolve("events.jsonl")) ||
+                            Files.isRegularFile(runDir.resolve("testar-trace.jsonl"))
+                        ) {
+                            attachTraceLink(runDir, normalized);
+                        }
+                        runs.add(normalized);
                     }
                 );
-        } catch (RuntimeException exception) {
-            if (exception.getCause() instanceof IOException) {
-                throw (IOException) exception.getCause();
-            }
-            throw exception;
         }
 
         runs.sort(Comparator.comparing(run -> String.valueOf(run.get("startedAt"))));
-        return runs;
+        incompleteRuns.sort(Comparator.comparing(run -> String.valueOf(run.get("startedAt"))));
+    }
+
+    private void makeRunMetadataPortable(
+        Path runDirectory,
+        Map<String, Object> result,
+        Map<String, Object> request
+    )
+        throws IOException {
+        if (!request.isEmpty() && !"@release".equals(request.get("workingDirectory"))) {
+            String oldRelease = stringValue(request.get("workingDirectory"));
+            String oldProject = "";
+            Object directoriesValue = request.get("additionalDirectories");
+            if (directoriesValue instanceof List<?>) {
+                List<?> directories = (List<?>) directoriesValue;
+                if (directories.size() > 1) {
+                    oldProject = stringValue(directories.get(1));
+                }
+            }
+            request.put("workingDirectory", "@release");
+            request.put("outputDirectory", "@run");
+            if (directoriesValue instanceof List<?>) {
+                List<?> directories = (List<?>) directoriesValue;
+                List<String> portableDirectories = new ArrayList<>();
+                for (Object directory : directories) {
+                    String value = stringValue(directory);
+                    if (value.equalsIgnoreCase(oldRelease)) {
+                        portableDirectories.add("@release");
+                    } else if (!oldProject.isBlank() && value.equalsIgnoreCase(oldProject)) {
+                        portableDirectories.add("@project");
+                    } else {
+                        portableDirectories.add(value);
+                    }
+                }
+                request.put("additionalDirectories", portableDirectories);
+            }
+            JSON_MAPPER
+                .writerWithDefaultPrettyPrinter()
+                .writeValue(runDirectory.resolve("request.json").toFile(), request);
+        }
+        if (!result.isEmpty() && !"@release".equals(result.get("workingDirectory"))) {
+            result.put("workingDirectory", "@release");
+            JSON_MAPPER
+                .writerWithDefaultPrettyPrinter()
+                .writeValue(runDirectory.resolve("result.json").toFile(), result);
+        }
+
+        Path manifestPath = runDirectory.resolve(CodexRunManifest.FILE_NAME);
+        if (Files.isRegularFile(manifestPath)) {
+            CodexRunManifest manifest = CodexRunManifest.read(runDirectory);
+            if (
+                !"starting".equalsIgnoreCase(manifest.getObservedStatus()) &&
+                !"running".equalsIgnoreCase(manifest.getObservedStatus()) &&
+                !"@project".equals(manifest.getProjectPath())
+            ) {
+                manifest.setProjectPath("@project");
+                CodexRunManifest.write(runDirectory, manifest);
+            }
+        }
+    }
+
+    private boolean hasRunEvidence(Path runDirectory) {
+        return (
+            Files.isRegularFile(runDirectory.resolve(CodexRunManifest.FILE_NAME)) ||
+            Files.isRegularFile(runDirectory.resolve("request.json")) ||
+            Files.isRegularFile(runDirectory.resolve("result.json")) ||
+            Files.isRegularFile(runDirectory.resolve("events.jsonl")) ||
+            Files.isRegularFile(runDirectory.resolve("testar-trace.jsonl")) ||
+            Files.isRegularFile(runDirectory.resolve("stdout.log")) ||
+            Files.isRegularFile(runDirectory.resolve("stderr.log"))
+        );
+    }
+
+    private Map<String, Object> loadIncompleteRun(Path runDirectory, Map<String, Object> request) {
+        Map<String, Object> run = new LinkedHashMap<>();
+        run.put("runName", runDirectory.getFileName().toString());
+        run.put("status", "incomplete");
+        run.put("startedAt", "");
+        run.put("modelName", stringValue(request.get("model")));
+        run.put("reasoningEffort", stringValue(request.get("reasoningEffort")));
+        run.put("sandboxMode", stringValue(request.get("sandboxMode")));
+        run.put("approvalPolicy", stringValue(request.get("approvalPolicy")));
+        run.put("networkAccessEnabled", booleanValue(request.get("networkAccessEnabled")));
+        run.put("projectName", projectName(runDirectory));
+        run.put("tracePath", "");
+
+        Path manifestPath = runDirectory.resolve(CodexRunManifest.FILE_NAME);
+        if (Files.isRegularFile(manifestPath)) {
+            try {
+                CodexRunManifest manifest = CodexRunManifest.read(runDirectory);
+                String observedStatus = manifest.getObservedStatus();
+                String recordedStatus = manifest.getStatus();
+                run.put(
+                    "status",
+                    "completed".equalsIgnoreCase(observedStatus) ||
+                        "failed".equalsIgnoreCase(observedStatus) ||
+                        "cancelled".equalsIgnoreCase(observedStatus)
+                        ? "incomplete"
+                        : observedStatus
+                );
+                if (
+                    "interrupted".equals(observedStatus) &&
+                    (
+                        "running".equalsIgnoreCase(recordedStatus) ||
+                        "starting".equalsIgnoreCase(recordedStatus)
+                    )
+                ) {
+                    run.put("recoveryNote", "The recorded process is no longer running.");
+                } else if ("incomplete".equals(run.get("status"))) {
+                    run.put("recoveryNote", "No complete run result was recorded.");
+                } else if (recordedStatus.equalsIgnoreCase(observedStatus)) {
+                    run.put("recoveryNote", "Recorded run status: " + recordedStatus + ".");
+                }
+                run.put("recordedStatus", recordedStatus);
+                run.put("runId", manifest.getRunId());
+                run.put("startedAt", manifest.getStartedAt());
+                if (!manifest.getModel().isBlank()) {
+                    run.put("modelName", manifest.getModel());
+                }
+                if (!manifest.getReasoningEffort().isBlank()) {
+                    run.put("reasoningEffort", manifest.getReasoningEffort());
+                }
+            } catch (IOException exception) {
+                run.put("recoveryNote", "Run manifest could not be read.");
+            }
+        } else {
+            run.put("recoveryNote", "Legacy run has no manifest; process status is unknown.");
+        }
+
+        attachTraceLink(runDirectory, run);
+        return run;
+    }
+
+    private void attachTraceLink(Path runDirectory, Map<String, Object> run) {
+        try {
+            traceViewerWriter.writeCodexTrace(runDirectory, run);
+            run.put("tracePath", "runs/" + runDirectory.getFileName() + "/trace.html");
+        } catch (IOException exception) {
+            run.put("traceRenderError", "Trace viewer could not be generated.");
+        }
     }
 
     private Map<String, Object> normalizeRun(
@@ -123,8 +294,8 @@ public class CodexMetricsDashboardWriter {
 
         Map<String, Object> run = new LinkedHashMap<>();
         run.put("runName", runDir.getFileName().toString());
-        run.put("projectName", projectName(result, request));
-        run.put("workingDirectory", stringValue(result.get("workingDirectory")));
+        run.put("projectName", projectName(runDir));
+        run.put("workingDirectory", "@release");
         run.put("threadId", stringValue(result.get("threadId")));
         run.put("modelName", stringValue(result.get("model")));
         run.put("reasoningEffort", stringValue(result.get("reasoningEffort")));
@@ -157,29 +328,16 @@ public class CodexMetricsDashboardWriter {
         return run;
     }
 
-    private String projectName(Map<String, Object> result, Map<String, Object> request) {
-        String workingDirectory = stringValue(result.get("workingDirectory"));
-        if (!workingDirectory.isBlank()) {
-            Path path = Paths.get(workingDirectory);
-            Path fileName = path.getFileName();
-            if (fileName != null) {
-                return fileName.toString();
-            }
-        }
-
-        String projectPath = stringValue(request.get("workingDirectory"));
-        if (!projectPath.isBlank()) {
-            Path path = Paths.get(projectPath);
-            Path fileName = path.getFileName();
-            if (fileName != null) {
-                return fileName.toString();
-            }
-        }
-
-        return "";
+    private String projectName(Path runDirectory) {
+        Path projectDirectory = runDirectory.getParent().getParent().getParent().getParent();
+        Path fileName = projectDirectory.getFileName();
+        return fileName != null ? fileName.toString() : "";
     }
 
-    private Map<String, Object> buildDashboardData(List<Map<String, Object>> runs) {
+    private Map<String, Object> buildDashboardData(
+        List<Map<String, Object>> runs,
+        List<Map<String, Object>> incompleteRuns
+    ) {
         Map<String, GroupAggregate> byGroup = new LinkedHashMap<>();
 
         for (Map<String, Object> run : runs) {
@@ -229,16 +387,23 @@ public class CodexMetricsDashboardWriter {
         payload.put("summary", summary);
         payload.put("groups", groups);
         payload.put("runs", runs);
+        payload.put("incompleteRuns", incompleteRuns);
         return payload;
     }
 
     private void copyDashboardAssets(Path metricsRoot) throws IOException {
-        Path htmlSource = Paths.get(
-            AppResourcePath.getReportTemplatePath(),
-            DASHBOARD_TEMPLATE_HTML
+        Path htmlSource = resolveReportAsset(
+            Paths.get(AppResourcePath.getReportTemplatePath(), DASHBOARD_TEMPLATE_HTML),
+            Paths.get("html", DASHBOARD_TEMPLATE_HTML)
         );
-        Path cssSource = Paths.get(AppResourcePath.getReportResourcePath(), "css", DASHBOARD_CSS);
-        Path jsSource = Paths.get(AppResourcePath.getReportResourcePath(), "js", DASHBOARD_JS);
+        Path cssSource = resolveReportAsset(
+            Paths.get(AppResourcePath.getReportResourcePath(), "css", DASHBOARD_CSS),
+            Paths.get("media", "css", DASHBOARD_CSS)
+        );
+        Path jsSource = resolveReportAsset(
+            Paths.get(AppResourcePath.getReportResourcePath(), "js", DASHBOARD_JS),
+            Paths.get("media", "js", DASHBOARD_JS)
+        );
 
         Path cssTargetDir = metricsRoot.resolve("media").resolve("css");
         Path jsTargetDir = metricsRoot.resolve("media").resolve("js");
@@ -268,6 +433,28 @@ public class CodexMetricsDashboardWriter {
             return new LinkedHashMap<>();
         }
         return JSON_MAPPER.readValue(file.toFile(), MAP_TYPE);
+    }
+
+    private Path resolveReportAsset(Path configuredPath, Path sourceRelativePath)
+        throws IOException {
+        if (Files.isRegularFile(configuredPath)) {
+            return configuredPath;
+        }
+
+        Path sourceRoot = Paths.get("Resources", "Configuration", "ReportTemplate");
+        for (Path candidate : List.of(
+            sourceRoot.resolve(sourceRelativePath),
+            Paths
+                .get("..", "Resources", "Configuration", "ReportTemplate")
+                .resolve(sourceRelativePath)
+                .normalize()
+        )) {
+            if (Files.isRegularFile(candidate)) {
+                return candidate;
+            }
+        }
+
+        throw new IOException("Codex dashboard asset was not found: " + configuredPath);
     }
 
     @SuppressWarnings("unchecked")

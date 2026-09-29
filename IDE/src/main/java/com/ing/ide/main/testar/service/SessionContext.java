@@ -3,6 +3,7 @@ package com.ing.ide.main.testar.service;
 import com.ing.ide.main.testar.TESTARDataWriter;
 import com.ing.ide.main.testar.playwright.system.PlaywrightSUT;
 import com.ing.ide.main.testar.playwright.system.PlaywrightState;
+import com.ing.ide.main.testar.trace.AgentTraceContext;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,7 @@ public class SessionContext {
     private String bddScenarioName = "";
     private String bddScenarioSource = "";
     private Path runtimeTempDir;
+    private AgentTraceContext traceContext;
     private int stateImageCounter;
 
     public SessionContext(TESTARDataWriter dataWriter) {
@@ -73,6 +75,14 @@ public class SessionContext {
 
     public void setRuntimeTempDir(Path runtimeTempDir) {
         this.runtimeTempDir = runtimeTempDir;
+    }
+
+    public AgentTraceContext getTraceContext() {
+        return traceContext;
+    }
+
+    public void setTraceContext(AgentTraceContext traceContext) {
+        this.traceContext = traceContext;
     }
 
     public int nextStateImageCounter() {

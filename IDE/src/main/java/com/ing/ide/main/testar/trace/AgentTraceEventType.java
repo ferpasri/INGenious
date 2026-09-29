@@ -1,0 +1,18 @@
+package com.ing.ide.main.testar.trace;
+
+public enum AgentTraceEventType {
+    RUN_STARTED,
+    RUN_FINISHED,
+    AGENT_MESSAGE,
+    DECISION_SUMMARY,
+    TOOL_REQUESTED,
+    COMMAND_REQUESTED,
+    OPERATION_COMPLETED,
+    STATE_OBSERVED,
+    FEEDBACK_PROVIDED,
+    RETRY_SCHEDULED,
+    ARTIFACT_CREATED,
+    ARTIFACT_REUSED,
+    ARTIFACT_SAVED,
+    RUN_ERROR
+}

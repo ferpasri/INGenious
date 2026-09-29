@@ -13,20 +13,44 @@ import com.ing.ide.main.testar.service.session.PlaywrightSessionService;
 import com.ing.ide.main.testar.service.session.SessionService;
 import com.ing.ide.main.testar.service.state.PlaywrightStateService;
 import com.ing.ide.main.testar.service.state.StateService;
+import com.ing.ide.main.testar.trace.AgentTraceContext;
+import com.ing.ide.main.testar.trace.JsonlAgentTraceRecorder;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class PlaywrightMcpDriver implements McpInterface {
+    private static final Logger LOGGER = Logger.getLogger(PlaywrightMcpDriver.class.getName());
+
     private final SessionContext context;
     private final PersistenceService persistenceService;
     private final SessionService sessionService;
     private final StateService stateService;
     private final ActionService actionService;
     private final AssertionService assertionService;
+    private final AgentTraceContext traceContext;
+    private final Path tracePath;
 
     public PlaywrightMcpDriver(Project project, String bddScenarioName) {
         // Initialize the data writer for saving OR objects and steps
         TESTARDataWriter dataWriter = new TESTARDataWriter(project, bddScenarioName);
         this.context = new SessionContext(dataWriter);
-        this.persistenceService = new INGeniousPersistenceService(dataWriter);
+        String traceRunId = "mcp-" + UUID.randomUUID();
+        this.tracePath =
+            Path.of(project.getLocation(), "Results", "MCP", "traces", traceRunId, "trace.jsonl");
+        AgentTraceContext createdTraceContext;
+        try {
+            createdTraceContext =
+                new AgentTraceContext(traceRunId, new JsonlAgentTraceRecorder(tracePath));
+        } catch (IOException | RuntimeException exception) {
+            LOGGER.log(Level.WARNING, "Could not initialize MCP trace recorder", exception);
+            createdTraceContext = new AgentTraceContext(traceRunId, null);
+        }
+        this.traceContext = createdTraceContext;
+        this.context.setTraceContext(traceContext);
+        this.persistenceService = new INGeniousPersistenceService(dataWriter, traceContext);
         this.sessionService = new PlaywrightSessionService(persistenceService);
         this.stateService = new PlaywrightStateService(persistenceService);
         this.actionService = new PlaywrightActionService(persistenceService);
@@ -35,6 +59,14 @@ public class PlaywrightMcpDriver implements McpInterface {
 
     public String getRunName() {
         return context.getDataWriter().getRunName();
+    }
+
+    public AgentTraceContext getTraceContext() {
+        return traceContext;
+    }
+
+    public String getTracePath() {
+        return "traces/" + traceContext.getRunId() + "/trace.html";
     }
 
     @Override

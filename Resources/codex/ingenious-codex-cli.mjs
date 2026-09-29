@@ -3,6 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import readline from "node:readline/promises";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 
 function normalizeAnswer(answer, fallbackValue) {
     const value = answer == null ? "" : answer.trim();
@@ -109,6 +110,7 @@ async function main() {
     const rawReleaseRoot = process.argv[2] ?? process.cwd();
     const releaseRoot = path.resolve(String(rawReleaseRoot).replace(/^"(.*)"$/, "$1"));
     const settings = await promptSettings();
+    const traceRunId = "codex-" + randomUUID();
 
     if (!settings.prompt) {
         throw new Error("Prompt text is required.");
@@ -135,10 +137,11 @@ async function main() {
         approvalPolicy: settings.approvalPolicy,
         networkAccessEnabled: settings.networkAccessEnabled,
         skipGitRepoCheck: true,
-        workingDirectory: releaseRoot,
-        additionalDirectories: [releaseRoot, projectDirectory],
+        workingDirectory: "@release",
+        additionalDirectories: ["@release", "@project"],
         prompt: buildExecutionPrompt(settings.prompt, settings.projectPath),
-        outputDirectory: runDirectory,
+        outputDirectory: "@run",
+        traceRunId,
     };
 
     await writeFile(requestPath, JSON.stringify(request, null, 4), "utf8");

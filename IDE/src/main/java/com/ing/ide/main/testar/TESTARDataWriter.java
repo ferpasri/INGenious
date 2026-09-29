@@ -19,12 +19,17 @@ import com.ing.ide.main.testar.playwright.actions.PlaywrightSelect;
 import com.ing.ide.main.testar.playwright.system.PlaywrightState;
 import com.ing.ide.main.testar.playwright.system.PlaywrightTags;
 import com.ing.ide.main.testar.playwright.system.PlaywrightWidget;
+import com.ing.ide.main.testar.trace.ArtifactPersistenceResult;
+import com.ing.ide.main.testar.trace.ArtifactReference;
+import com.ing.ide.main.testar.trace.TraceValueRedactor;
 import com.microsoft.playwright.ElementHandle;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import org.testar.monkey.alayer.Action;
@@ -46,7 +51,7 @@ public class TESTARDataWriter {
         // This OR is common to all scenarios and test cases
         this.project = project;
         this.bddScenarioName = bddScenarioName;
-        objectRepository = new ObjectRepository(project);
+        objectRepository = project.getObjectRepository();
         webOR = objectRepository.getWebOR();
         webOR.setObjectRepository(objectRepository);
 
@@ -113,10 +118,25 @@ public class TESTARDataWriter {
 
     /** Add the action-element info into INGenious */
     public WebORObject addWidgetObject(PlaywrightWidget playwrightWidget, Page page) {
+        return persistWidgetObject(playwrightWidget, page).object;
+    }
+
+    public ArtifactPersistenceResult addObservedWidgetObject(
+        PlaywrightWidget playwrightWidget,
+        Page page
+    ) {
+        WidgetPersistence persistedWidget = persistWidgetObject(playwrightWidget, page);
+        ArtifactPersistenceResult result = new ArtifactPersistenceResult();
+        result.add(objectReference("OBJECT_REPOSITORY_OBJECT", persistedWidget));
+        return result;
+    }
+
+    private WidgetPersistence persistWidgetObject(PlaywrightWidget playwrightWidget, Page page) {
         WebORPage webORPage = webOR.addPage(page.title());
 
         String elementDescription = describeElement(playwrightWidget);
         WebORObject webORObject = findWidgetObject(webORPage, elementDescription, playwrightWidget);
+        boolean created = webORObject == null;
         if (webORObject == null) {
             String uniqueElementName = findUniqueElementName(webORPage, elementDescription);
             ObjectGroup objectGroup = webORPage.addObjectGroup(uniqueElementName);
@@ -184,7 +204,7 @@ public class TESTARDataWriter {
         );
         objectRepository.saveWebPageNow(webORPage);
 
-        return webORObject;
+        return new WidgetPersistence(webORPage, webORObject, created);
     }
 
     private WebORObject findWidgetObject(
@@ -372,7 +392,7 @@ public class TESTARDataWriter {
         return "";
     }
 
-    public void addAbstractTestStep(
+    public ArtifactReference addAbstractTestStep(
         String bddStep,
         String object,
         String description,
@@ -407,12 +427,27 @@ public class TESTARDataWriter {
         concreteTestStep.setObject(object);
         concreteTestStep.setDescription(description);
         concreteTestStep.setAction(testAction);
-        concreteTestStep.setInput(createTestDataInput(input, object, testAction));
+        TestDataInput persistedInput = createTestDataInput(input, object, testAction);
+        concreteTestStep.setInput(persistedInput.value);
         concreteTestStep.setReference(reference);
         reusableTestCase.save();
+
+        ArtifactReference artifact = new ArtifactReference();
+        artifact.setKind("LOW_LEVEL_BDD_STEP");
+        artifact.setDisposition("created");
+        artifact.setScenarioName(bddScenario.getName());
+        artifact.setTestCaseName(mainTestCase.getName());
+        artifact.setReusableScenarioName(reusableStepScenario.getName());
+        artifact.setReusableTestCaseName(reusableTestCase.getName());
+        artifact.setLowLevelStepIndex(reusableTestCase.getTestSteps().size());
+        artifact.setAction(testAction);
+        setArtifactInput(artifact, persistedInput, input);
+        artifact.setPageName(reference);
+        artifact.setObjectName(object);
+        return artifact;
     }
 
-    public void addConcreteTestStep(
+    public ArtifactReference addConcreteTestStep(
         String object,
         String description,
         String testAction,
@@ -423,20 +458,58 @@ public class TESTARDataWriter {
         concreteTestStep.setObject(object);
         concreteTestStep.setDescription(description);
         concreteTestStep.setAction(testAction);
-        concreteTestStep.setInput(createTestDataInput(input, object, testAction));
+        TestDataInput persistedInput = createTestDataInput(input, object, testAction);
+        concreteTestStep.setInput(persistedInput.value);
         concreteTestStep.setReference(reference);
+
+        ArtifactReference artifact = new ArtifactReference();
+        artifact.setKind("LOW_LEVEL_TEST_STEP");
+        artifact.setDisposition("created");
+        artifact.setScenarioName(bddScenario.getName());
+        artifact.setTestCaseName(mainTestCase.getName());
+        artifact.setLowLevelStepIndex(mainTestCase.getTestSteps().size());
+        artifact.setAction(testAction);
+        setArtifactInput(artifact, persistedInput, input);
+        artifact.setPageName(reference);
+        artifact.setObjectName(object);
+        return artifact;
+    }
+
+    private void setArtifactInput(
+        ArtifactReference artifact,
+        TestDataInput persistedInput,
+        String input
+    ) {
+        artifact.setInputReference(persistedInput.value);
+        artifact.setTestDataSheet(persistedInput.sheet);
+        artifact.setTestDataRow(persistedInput.row);
+        artifact.setTestDataColumn(persistedInput.column);
+        if (!persistedInput.column.isBlank()) {
+            artifact.setTestDataValue(
+                TraceValueRedactor.redactTestDataValue(
+                    persistedInput.column,
+                    input.trim().substring(1)
+                )
+            );
+        }
     }
 
     /** Add the TestStep into INGenious */
-    public void addActionTestStep(String bddStep, PlaywrightState state, Action action, Page page) {
+    public ArtifactPersistenceResult addActionTestStep(
+        String bddStep,
+        PlaywrightState state,
+        Action action,
+        Page page
+    ) {
         // Add the state-page to the OR
         String webPageTitle = state.getPage().title();
         WebORPage webORPage = webOR.addPage(webPageTitle);
         // Add the data of the selected action-element into the OR
-        WebORObject webORObject = addWidgetObject(
+        WidgetPersistence widgetPersistence = persistWidgetObject(
             (PlaywrightWidget) action.get(Tags.OriginWidget),
             page
         );
+        WebORObject webORObject = widgetPersistence.object;
 
         // Create an INGenious action test step
         String object = webORObject.getName();
@@ -461,16 +534,24 @@ public class TESTARDataWriter {
             input = "@" + ((PlaywrightSelect) action).getOptionValue();
         } else testAction = "Unknown";
 
-        addAbstractTestStep(bddStep, object, description, testAction, input, reference);
+        ArtifactPersistenceResult result = new ArtifactPersistenceResult();
+        result.add(objectReference("OBJECT_REPOSITORY_OBJECT", widgetPersistence));
+        result.add(addAbstractTestStep(bddStep, object, description, testAction, input, reference));
+        return result;
     }
 
-    public void addAssertTestStep(String bddStep, PlaywrightState state, String assertText) {
+    public ArtifactPersistenceResult addAssertTestStep(
+        String bddStep,
+        PlaywrightState state,
+        String assertText
+    ) {
         // Add the state-page to the OR
         String webPageTitle = state.getPage().title();
         WebORPage webORPage = webOR.addPage(webPageTitle);
 
         // Reuse an assert object only when its stored text is the same.
         WebORObject webORObject = findAssertObjectByText(webORPage, assertText);
+        boolean created = webORObject == null;
         if (webORObject == null) {
             String elementDescription = findUniqueElementName(
                 webORPage,
@@ -489,18 +570,52 @@ public class TESTARDataWriter {
         String input = "";
         String reference = webORPage.getName();
 
-        addAbstractTestStep(bddStep, object, description, testAction, input, reference);
+        ArtifactPersistenceResult result = new ArtifactPersistenceResult();
+        WidgetPersistence persistedAssert = new WidgetPersistence(webORPage, webORObject, created);
+        result.add(objectReference("OBJECT_REPOSITORY_ASSERTION", persistedAssert));
+        result.add(addAbstractTestStep(bddStep, object, description, testAction, input, reference));
+        return result;
     }
 
-    public void addTitleAssertTestStep(String bddStep, String titlePattern) {
-        addAbstractTestStep(
-            bddStep,
-            "Browser",
-            "Assert if Page has title [<Data>]",
-            "assertPageTitleMatches",
-            "@" + titlePattern,
-            ""
+    public ArtifactPersistenceResult addTitleAssertTestStep(String bddStep, String titlePattern) {
+        ArtifactPersistenceResult result = new ArtifactPersistenceResult();
+        result.add(
+            addAbstractTestStep(
+                bddStep,
+                "Browser",
+                "Assert if Page has title [<Data>]",
+                "assertPageTitleMatches",
+                "@" + titlePattern,
+                ""
+            )
         );
+        return result;
+    }
+
+    private ArtifactReference objectReference(String kind, WidgetPersistence persistedWidget) {
+        ArtifactReference artifact = new ArtifactReference();
+        artifact.setKind(kind);
+        artifact.setDisposition(persistedWidget.created ? "created" : "reused");
+        artifact.setScenarioName(bddScenario.getName());
+        artifact.setTestCaseName(mainTestCase.getName());
+        artifact.setPageName(persistedWidget.page.getName());
+        artifact.setObjectGroupName(persistedWidget.object.getParent().getName());
+        artifact.setObjectName(persistedWidget.object.getName());
+        Map<String, String> locators = new LinkedHashMap<>();
+        addLocatorProperty(locators, "css", persistedWidget.object.getAttributeByName("css"));
+        addLocatorProperty(locators, "xpath", persistedWidget.object.getAttributeByName("xpath"));
+        addLocatorProperty(locators, "TestId", persistedWidget.object.getAttributeByName("TestId"));
+        addLocatorProperty(locators, "Role", persistedWidget.object.getAttributeByName("Role"));
+        addLocatorProperty(locators, "Text", persistedWidget.object.getAttributeByName("Text"));
+        addLocatorProperty(locators, "Label", persistedWidget.object.getAttributeByName("Label"));
+        artifact.setLocatorProperties(locators);
+        return artifact;
+    }
+
+    private void addLocatorProperty(Map<String, String> locators, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            locators.put(key, value);
+        }
     }
 
     private WebORObject findAssertObjectByText(WebORPage webORPage, String assertText) {
@@ -572,14 +687,14 @@ public class TESTARDataWriter {
         }
     }
 
-    private String createTestDataInput(String input, String object, String testAction) {
+    private TestDataInput createTestDataInput(String input, String object, String testAction) {
         if (
             input == null ||
             input.trim().isEmpty() ||
             !input.trim().startsWith("@") ||
             input.trim().substring(1).isEmpty()
         ) {
-            return input;
+            return new TestDataInput(input, "", -1, "");
         }
 
         // Extract the value from the provided data input @john -> john
@@ -615,7 +730,12 @@ public class TESTARDataWriter {
                 testDataModel.setValueAt(inputValue, rowIndex, colIndex);
             }
 
-            return sheetDataName + ":" + columnDataField;
+            return new TestDataInput(
+                sheetDataName + ":" + columnDataField,
+                sheetDataName,
+                rowIndex + 1,
+                columnDataField
+            );
         } catch (Exception ex) {
             java
                 .util.logging.Logger.getLogger(TESTARDataWriter.class.getName())
@@ -624,7 +744,7 @@ public class TESTARDataWriter {
                     "Failed to associate input with test data; leaving literal input as-is: " +
                     ex.getMessage()
                 );
-            return input;
+            return new TestDataInput(input, "", -1, "");
         }
     }
 
@@ -708,6 +828,32 @@ public class TESTARDataWriter {
             // Else, an existing column data field exists, so we need to create a unique one
             // E.g., try to create a new unique column data field for (username[input]_Fill_2)
             columnDataField = columnDataName + "_" + suffix++;
+        }
+    }
+
+    private static final class WidgetPersistence {
+        private final WebORPage page;
+        private final WebORObject object;
+        private final boolean created;
+
+        private WidgetPersistence(WebORPage page, WebORObject object, boolean created) {
+            this.page = page;
+            this.object = object;
+            this.created = created;
+        }
+    }
+
+    private static final class TestDataInput {
+        private final String value;
+        private final String sheet;
+        private final int row;
+        private final String column;
+
+        private TestDataInput(String value, String sheet, int row, String column) {
+            this.value = value;
+            this.sheet = sheet;
+            this.row = row;
+            this.column = column;
         }
     }
 }
