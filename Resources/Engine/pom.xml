@@ -5,7 +5,7 @@
     <version>4.0.0</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <playwright.version>1.58.0</playwright.version>
+        <playwright.version>1.63.0</playwright.version>
         <commons-cli.version>1.4</commons-cli.version>
         <javamail.version>1.4.7</javamail.version>
         <json-simple.version>1.1.1</json-simple.version>
@@ -245,6 +245,12 @@
             <groupId>com.microsoft.playwright</groupId>
             <artifactId>playwright</artifactId>
             <version>${playwright.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testar</groupId>
+            <artifactId>testar-evidence-playwright-java-adapter</artifactId>
+            <version>0.3.0</version>
         </dependency>
         
         <dependency>
@@ -836,6 +842,16 @@
         </plugins>
     </build>
     <repositories>
+        <repository>
+            <id>bundled-testar-evidence</id>
+            <url>file://${project.basedir}/repository</url>
+            <releases>
+                <checksumPolicy>fail</checksumPolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
       <!-- <repository>
             <id>confluent</id>
             <url>https://packages.confluent.io/maven/</url>
@@ -1017,6 +1033,12 @@
             <groupId>com.microsoft.playwright</groupId>
             <artifactId>playwright</artifactId>
             <version>${playwright.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testar</groupId>
+            <artifactId>testar-evidence-playwright-java-adapter</artifactId>
+            <version>0.3.0</version>
         </dependency>
         
         <dependency>

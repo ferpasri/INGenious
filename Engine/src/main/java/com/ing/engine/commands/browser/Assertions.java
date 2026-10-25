@@ -1,6 +1,6 @@
 package com.ing.engine.commands.browser;
 
-import static com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat;
+import static org.testar.evidence.playwright.EvidenceAssertions.assertThat;
 
 import com.ing.engine.core.CommandControl;
 import com.ing.ingenious.api.annotation.Action;

@@ -169,6 +169,12 @@
             <artifactId>playwright</artifactId>
             <version>${playwright.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.testar</groupId>
+            <artifactId>testar-evidence-playwright-java-adapter</artifactId>
+            <version>0.3.0</version>
+        </dependency>
         
         <dependency>
             <groupId>com.deque.html.axe-core</groupId>
@@ -434,6 +440,16 @@
         </dependency>
     </dependencies>
     <repositories>
+        <repository>
+            <id>bundled-testar-evidence</id>
+            <url>file://${project.basedir}/../Resources/Engine/repository</url>
+            <releases>
+                <checksumPolicy>fail</checksumPolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
       <!-- <repository>
             <id>confluent</id>
             <url>https://packages.confluent.io/maven/</url>

@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
+import org.testar.evidence.playwright.EvidenceOptions;
+import org.testar.evidence.playwright.EvidencePlaywright;
 
 public class PlaywrightDriverFactory {
     public static boolean isViewPortSizeMaximized;
@@ -77,7 +79,7 @@ public class PlaywrightDriverFactory {
         //if(Control.exe.getExecSettings().getRunSettings().isGridExecution())
         //    env.put("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", "1");
 
-        return Playwright.create(new Playwright.CreateOptions().setEnv(env));
+        return EvidencePlaywright.create(EvidenceOptions.defaults(), new Playwright.CreateOptions().setEnv(env));
     }
 
     public static BrowserType createBrowserType(
